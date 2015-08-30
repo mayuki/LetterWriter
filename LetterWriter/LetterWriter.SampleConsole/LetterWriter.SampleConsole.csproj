@@ -7,8 +7,8 @@
     <ProjectGuid>{FC992B3B-32DC-4F3B-A9D8-290B7A682B33}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>ConsoleApplication11</RootNamespace>
-    <AssemblyName>ConsoleApplication11</AssemblyName>
+    <RootNamespace>LetterWriter.SampleConsole</RootNamespace>
+    <AssemblyName>LetterWriter.SampleConsole</AssemblyName>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>

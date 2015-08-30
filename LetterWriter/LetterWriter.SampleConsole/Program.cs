@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using LetterWriter;
 using LetterWriter.Markup;
 
-namespace ConsoleApplication11
+namespace LetterWriter.SampleConsole
 {
     class Program
     {

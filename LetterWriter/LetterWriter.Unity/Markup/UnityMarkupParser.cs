@@ -55,13 +55,14 @@ namespace LetterWriter.Unity.Markup
 
             if (tagNameUpper == "COLOR")
             {
-                if (!_colorTable.ContainsKey(element.Attributes["Value"]))
+                var value = element.GetAttribute("Value");
+                if (!_colorTable.ContainsKey(value))
                     return base.VisitMarkupElement(element, tagNameUpper);
 
                 return
                     new TextRun[]
                     {
-                        new UnityTextModifier() { Color = this._colorTable[element.Attributes["Value"]] }
+                        new UnityTextModifier() { Color = this._colorTable[value] }
                     }
                     .Concat(base.VisitMarkupElement(element, tagNameUpper))
                     .Concat(new TextRun[] { new TextEndOfSegment() })
@@ -70,7 +71,7 @@ namespace LetterWriter.Unity.Markup
             if (tagNameUpper == "SIZE")
             {
                 var size = 0;
-                if (Int32.TryParse(element.Attributes["Value"], out size))
+                if (Int32.TryParse(element.GetAttribute("Value"), out size))
                 {
                     return
                         new TextRun[]

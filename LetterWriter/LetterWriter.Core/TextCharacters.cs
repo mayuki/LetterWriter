@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Diagnostics;
 
 namespace LetterWriter
@@ -17,7 +17,7 @@ namespace LetterWriter
         {
             if (text.Contains("\n"))
             {
-                throw new ArgumentException("ƒeƒLƒXƒg‚É‰üs‚ğŠÜ‚ß‚é‚±‚Æ‚Í‚Å‚«‚Ü‚¹‚ñBLineBreak‚ğ—˜—p‚µ‚Ä‚­‚¾‚³‚¢B");
+                throw new ArgumentException("ãƒ†ã‚­ã‚¹ãƒˆã«æ”¹è¡Œã‚’å«ã‚ã‚‹ã“ã¨ã¯ã§ãã¾ã›ã‚“ã€‚LineBreakã‚’åˆ©ç”¨ã—ã¦ãã ã•ã„ã€‚");
             }
 
             this.RawCharacters = text;

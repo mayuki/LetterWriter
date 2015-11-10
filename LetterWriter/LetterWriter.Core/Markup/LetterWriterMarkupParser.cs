@@ -9,7 +9,7 @@ namespace LetterWriter.Markup
         {
             if (tagNameUpper == "RUBY")
             {
-                return new TextRun[] { new TextCharactersRubyGroup(element.TextContent, element.Attributes["Value"]) };
+                return new TextRun[] { new TextCharactersRubyGroup(element.TextContent, element.GetAttribute("Value")) };
             }
 
             if (tagNameUpper == "BR")

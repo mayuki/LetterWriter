@@ -16,6 +16,8 @@ namespace LetterWriter.Unity.Components
         private bool _requireReformatText = true;
         private Rect _previousRect = Rect.MinMaxRect(0, 0, 0, 0);
         private TextLine[] _formattedTextLines;
+        private TextSource _textSource;
+        private string _prevText; // TODO: 変更チェックが雑なのであとで直す
 
         private static LetterWriterMarkupParser _markupParser = new UnityMarkupParser();
 
@@ -39,7 +41,7 @@ namespace LetterWriter.Unity.Components
         public string Text
         {
             get { return this._text; }
-            set { this._text = value; this.MarkAsReformatRequired(); }
+            set { this._text = value; this.RefreshTextSourceIfNeeded(); this.MarkAsReformatRequired(); }
         }
 
         [SerializeField]
@@ -122,6 +124,16 @@ namespace LetterWriter.Unity.Components
             }
         }
 
+        protected void RefreshTextSourceIfNeeded()
+        {
+            if (this._prevText != this._text)
+            {
+                _markupParser.TreatNewLineAsLineBreak = this.TreatNewLineAsLineBreak;
+                this._textSource = _markupParser.Parse(this.Text);
+                this._prevText = this._text;
+            }
+        }
+
         protected void MarkAsReformatRequired()
         {
             this._requireReformatText = true;
@@ -157,16 +169,15 @@ namespace LetterWriter.Unity.Components
 
         protected virtual TextLine[] FormatText(float width)
         {
-            _markupParser.TreatNewLineAsLineBreak = this.TreatNewLineAsLineBreak;
+            this.RefreshTextSourceIfNeeded();
 
-            var textSource = _markupParser.Parse(this.Text);
             var textLineBreakState = new TextLineBreakState();
             var textFormatter = new UnityTextFormatter(this.Font, this.FontSize, this.color);
 
             var textLines = new List<TextLine>();
             while (true)
             {
-                var textLine = textFormatter.FormatLine(textSource, (int)width, textLineBreakState);
+                var textLine = textFormatter.FormatLine(this._textSource, (int)width, textLineBreakState);
                 if (textLine == null)
                     break;
 

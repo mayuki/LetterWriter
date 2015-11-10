@@ -76,12 +76,24 @@ namespace LetterWriter.Unity.Components
             set { this._lineHeight = value; this.MarkAsReformatRequired(); }
         }
 
+        /// <summary>
+        /// 表示される長さを取得、設定します。
+        /// </summary>
         [SerializeField]
         private int _visibleLength = -1;
         public int VisibleLength
         {
             get { return this._visibleLength; }
             set { this._visibleLength = value; this.MarkAsReformatRequired(); }
+        }
+
+        private int _maxIndex;
+        /// <summary>
+        /// テキストの長さに対する最大のインデックスの値を取得します。
+        /// </summary>
+        public int MaxIndex
+        {
+            get { return this._maxIndex; }
         }
 
         [SerializeField]
@@ -126,7 +138,7 @@ namespace LetterWriter.Unity.Components
 
         protected void RefreshTextSourceIfNeeded()
         {
-            if (this._prevText != this._text)
+            if (this._prevText != this._text || this._textSource == null)
             {
                 _markupParser.TreatNewLineAsLineBreak = this.TreatNewLineAsLineBreak;
                 this._textSource = _markupParser.Parse(this.Text);
@@ -184,7 +196,10 @@ namespace LetterWriter.Unity.Components
                 textLines.Add(textLine);
             }
 
-            return textLines.ToArray();
+            var textLinesArray = textLines.ToArray();
+            this._maxIndex = textLinesArray.SelectMany(x => x.PlacedGlyphs.Select(y => y.Index)).Max();
+
+            return textLinesArray;
         }
 
 #if UNITY_5 && UNITY_5_2

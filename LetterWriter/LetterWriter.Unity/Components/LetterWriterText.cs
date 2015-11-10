@@ -16,6 +16,8 @@ namespace LetterWriter.Unity
         private Rect _previousRect = Rect.MinMaxRect(0, 0, 0, 0);
         private TextLine[] _formattedTextLines;
 
+        private static LetterWriterMarkupParser _markupParser = new UnityMarkupParser();
+
         private RectTransform _cachedRectTransform;
         public RectTransform CachedRectTransform
         {
@@ -95,11 +97,19 @@ namespace LetterWriter.Unity
             set { this._verticalOverflow = value; }
         }
 
+        [SerializeField]
+        private bool _treatNewLineAsLineBreak = true;
+        public bool TreatNewLineAsLineBreak
+        {
+            get { return this._treatNewLineAsLineBreak; }
+            set { this._treatNewLineAsLineBreak = value; }
+        }
+
         public override Material defaultMaterial
         {
             get
             {
-                return Canvas.GetDefaultCanvasTextMaterial();
+                return Canvas.GetDefaultCanvasMaterial();
             }
         }
 
@@ -122,6 +132,8 @@ namespace LetterWriter.Unity
 
             this.MarkAsReformatRequired();
             Font.textureRebuilt += OnFontTextureRebuilt;
+
+            this._cachedRectTransform = null;
         }
 
         protected override void OnDisable()
@@ -129,6 +141,7 @@ namespace LetterWriter.Unity
             base.OnDisable();
 
             Font.textureRebuilt -= OnFontTextureRebuilt;
+            this._cachedRectTransform = null;
         }
 
         protected virtual void OnFontTextureRebuilt(Font font)
@@ -143,7 +156,9 @@ namespace LetterWriter.Unity
 
         protected virtual TextLine[] FormatText(float width)
         {
-            var textSource = new UnityMarkupParser().Parse(this.Text);
+            _markupParser.TreatNewLineAsLineBreak = this.TreatNewLineAsLineBreak;
+
+            var textSource = _markupParser.Parse(this.Text);
             var textLineBreakState = new TextLineBreakState();
             var textFormatter = new UnityTextFormatter(this.Font, this.FontSize, this.color);
 
@@ -160,6 +175,75 @@ namespace LetterWriter.Unity
             return textLines.ToArray();
         }
 
+#if UNITY_5 && UNITY_5_2
+        protected override void OnPopulateMesh(Mesh m)
+        {
+            if (this.Font == null)
+                return;
+
+            // 何か変化があったら再フォーマットする
+            if (this._requireReformatText || this._previousRect != this.CachedRectTransform.rect)
+            {
+                this.UpdateText();
+                this._requireReformatText = false;
+            }
+
+            // 開始位置
+            var x = this.rectTransform.rect.xMin;
+            var y = this.rectTransform.rect.yMax;
+
+            var leadingBase = ((this.Font.lineHeight - (float)this.Font.fontSize) / this.Font.fontSize) / 2;
+
+            y += (leadingBase * this.FontSize); // 一行目の分、少し上に上げておく
+
+            m.Clear();
+
+            using (var vertexHelper = new VertexHelper(m))
+            { 
+                foreach (var textLine in this._formattedTextLines)
+                {
+                    var lineHeight = (this.FontSize + (leadingBase * this.FontSize));
+
+                    // 上に突き抜けてる分を計算してあげないと…
+                    if (textLine.PlacedGlyphs.Any(p => p.Y < 0))
+                    {
+                        lineHeight += textLine.PlacedGlyphs.Where(p => p.Y < 0).Max(p => p.Glyph.Height);
+                    }
+
+                    // オーバーフロー
+                    if (this.VerticalOverflow == VerticalWrapMode.Truncate && this.rectTransform.rect.yMin > (y - lineHeight))
+                    {
+                        break;
+                    }
+
+                    foreach (var placedGlyph in textLine.PlacedGlyphs.Where(p => p != GlyphPlacement.Empty && (p.Index < this._visibleLength || this._visibleLength == -1)))
+                    {
+                        var glyph = (UnityGlyph)placedGlyph.Glyph;
+                        var uiVertexes = glyph.BaseVertices;
+
+                        uiVertexes[0].position.x += placedGlyph.X + x;
+                        uiVertexes[0].position.y += -placedGlyph.Y + y - lineHeight;
+
+                        uiVertexes[1].position.x += placedGlyph.X + x;
+                        uiVertexes[1].position.y += -placedGlyph.Y + y - lineHeight;
+
+                        uiVertexes[2].position.x += placedGlyph.X + x;
+                        uiVertexes[2].position.y += -placedGlyph.Y + y - lineHeight;
+
+                        uiVertexes[3].position.x += placedGlyph.X + x;
+                        uiVertexes[3].position.y += -placedGlyph.Y + y - lineHeight;
+
+                        vertexHelper.AddUIVertexQuad(uiVertexes);
+                    }
+
+                    y -= lineHeight * this.LineHeight;
+                }
+
+                vertexHelper.FillMesh(m);
+            }
+        }
+#endif
+#if UNITY_5 && !UNITY_5_2
         protected override void OnFillVBO(List<UIVertex> vbo)
         {
             if (this.Font == null)
@@ -219,6 +303,7 @@ namespace LetterWriter.Unity
                 y -= lineHeight * this.LineHeight;
             }
         }
+#endif
 
 #if UNITY_EDITOR
         protected override void Reset()
@@ -227,7 +312,7 @@ namespace LetterWriter.Unity
         }
 #endif
 
-        #region ILayoutElement Implementation
+#region ILayoutElement Implementation
 
         public void CalculateLayoutInputHorizontal()
         {
@@ -247,11 +332,7 @@ namespace LetterWriter.Unity
         {
             get
             {
-                var formattedLines = this.FormatText(99999f); // 超巨大ということにしておく
-                var firstLine = formattedLines.FirstOrDefault();
-                if (firstLine == null) return 0;
-
-                return firstLine.PlacedGlyphs.Max(x => x.X + x.Glyph.AdvanceWidth);
+                return this.GetPreferredWidth(this.rectTransform.rect.height);
             }
         }
         public float flexibleWidth { get { return -1; } }
@@ -263,38 +344,64 @@ namespace LetterWriter.Unity
         {
             get
             {
-                if (this.rectTransform.rect.width < 0)
-                    return 0;
-
-                var formattedLines = this.FormatText(this.rectTransform.rect.width);
-                var height = 0f;
-                var leadingBase = ((this.Font.lineHeight - (float) this.Font.fontSize)/this.Font.fontSize)/2;
-
-                height -= (leadingBase * this.FontSize); // 一行目の分、少し上に上げておく
-
-                foreach (var textLine in formattedLines)
-                {
-                    var lineHeight = (this.FontSize + (leadingBase * this.FontSize));
-
-                    // 上に突き抜けてる分を計算してあげないと…
-                    if (textLine.PlacedGlyphs.Any(p => p.Y < 0))
-                    {
-                        lineHeight += textLine.PlacedGlyphs.Where(p => p.Y < 0).Max(p => p.Glyph.Height);
-                    }
-
-                    height += lineHeight * this.LineHeight;
-                }
-
-                height += (leadingBase * this.FontSize);
-
-                return height;
+                return this.GetPreferredHeight(this.rectTransform.rect.width);
             }
         }
         public float flexibleHeight { get { return -1; } }
         public int layoutPriority { get { return 0; } }
 
-        #endregion
+#endregion
+
+        /// <summary>
+        /// 指定した高さに文章が収まる最小の幅を算出します。
+        /// </summary>
+        /// <param name="constraintHeight"></param>
+        /// <returns></returns>
+        public float GetPreferredWidth(float constraintHeight)
+        {
+            var formattedLines = this.FormatText(99999f); // 超巨大ということにしておく
+            var firstLine = formattedLines.FirstOrDefault();
+            if (firstLine == null) return 0;
+
+            return firstLine.PlacedGlyphs.Max(x => x.X + x.Glyph.AdvanceWidth);
+        }
+
+        /// <summary>
+        /// 指定した幅に文章が収まる最小の高さを算出します。
+        /// </summary>
+        /// <param name="constraintWidth"></param>
+        /// <returns></returns>
+
+        public float GetPreferredHeight(float constraintWidth)
+        {
+            if (constraintWidth < 0)
+                return 0;
+
+            var formattedLines = this.FormatText(constraintWidth);
+            var height = 0f;
+            var leadingBase = ((this.Font.lineHeight - (float)this.Font.fontSize) / this.Font.fontSize) / 2;
+
+            height -= (leadingBase * this.FontSize); // 一行目の分、少し上に上げておく
+
+            foreach (var textLine in formattedLines)
+            {
+                var lineHeight = (this.FontSize + (leadingBase * this.FontSize));
+
+                // 上に突き抜けてる分を計算してあげないと…
+                if (textLine.PlacedGlyphs.Any(p => p.Y < 0))
+                {
+                    lineHeight += textLine.PlacedGlyphs.Where(p => p.Y < 0).Max(p => p.Glyph.Height);
+                }
+
+                height += lineHeight * this.LineHeight;
+            }
+
+            height += (leadingBase * this.FontSize);
+
+            return height;
+        }
     }
+
 
     public class UnityMarkupParser : LetterWriter.Markup.LetterWriterMarkupParser
     {

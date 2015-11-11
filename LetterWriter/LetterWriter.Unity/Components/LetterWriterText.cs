@@ -11,7 +11,7 @@ using LetterWriter.Unity.Markup;
 namespace LetterWriter.Unity.Components
 {
     [ExecuteInEditMode]
-    public class LetterWriterText : Graphic, ILayoutElement
+    public class LetterWriterText : MaskableGraphic, ILayoutElement
     {
         private bool _requireReformatText = true;
         private Rect _previousRect = Rect.MinMaxRect(0, 0, 0, 0);
@@ -84,7 +84,11 @@ namespace LetterWriter.Unity.Components
         public int VisibleLength
         {
             get { return this._visibleLength; }
-            set { this._visibleLength = value; this.MarkAsReformatRequired(); }
+            set
+            {
+                this._visibleLength = value;
+                this.MarkAsRebuildRequired();
+            }
         }
 
         private int _maxIndex;
@@ -120,35 +124,19 @@ namespace LetterWriter.Unity.Components
             set { this._treatNewLineAsLineBreak = value; }
         }
 
-        public override Material defaultMaterial
-        {
-            get
-            {
-                return Canvas.GetDefaultCanvasMaterial();
-            }
-        }
 
         public override Texture mainTexture
         {
             get
             {
-                return this.Font.material.mainTexture;
-            }
-        }
+                if (this.Font != null && this.Font.material != null && this.Font.material.mainTexture != null)
+                    return this.Font.material.mainTexture;
 
-        protected void RefreshTextSourceIfNeeded()
-        {
-            if (this._prevText != this._text || this._textSource == null)
-            {
-                _markupParser.TreatNewLineAsLineBreak = this.TreatNewLineAsLineBreak;
-                this._textSource = _markupParser.Parse(this.Text);
-                this._prevText = this._text;
-            }
-        }
+                if (this.m_Material != null)
+                    return this.m_Material.mainTexture;
 
-        protected void MarkAsReformatRequired()
-        {
-            this._requireReformatText = true;
+                return base.mainTexture;
+            }
         }
 
         protected override void OnEnable()
@@ -171,14 +159,58 @@ namespace LetterWriter.Unity.Components
 
         protected virtual void OnFontTextureRebuilt(Font font)
         {
-            this.MarkAsReformatRequired();
+            this.MarkAsReformatRequired(); // 現状ではフォーマット済みテキストにGlyph位置が含まれているのでテクスチャが変わったら再フォーマットが必要
+            this.MarkAsRebuildRequired();
         }
 
-        protected virtual void UpdateText()
+        /// <summary>
+        /// テキストソース(マークアップパース結果)の更新が必要であれば行います。
+        /// </summary>
+        protected void RefreshTextSourceIfNeeded()
+        {
+            if (this._prevText != this._text || this._textSource == null)
+            {
+                _markupParser.TreatNewLineAsLineBreak = this.TreatNewLineAsLineBreak;
+                this._textSource = _markupParser.Parse(this.Text);
+                this._prevText = this._text;
+                this._visibleLength = -1;
+            }
+        }
+
+        /// <summary>
+        /// Graphicsの再構築を要求します。
+        /// </summary>
+        protected void MarkAsRebuildRequired()
+        {
+            if (CanvasUpdateRegistry.IsRebuildingGraphics())
+                return;
+
+            this.SetVerticesDirty();
+        }
+
+        /// <summary>
+        /// パース済みでフォーマットされた内部テキスト情報の再フォーマットを要求します。
+        /// </summary>
+        protected void MarkAsReformatRequired()
+        {
+            this._requireReformatText = true;
+            this.MarkAsRebuildRequired();
+        }
+
+        /// <summary>
+        /// 内部のフォーマット済みテキストを更新します。
+        /// </summary>
+        protected virtual void UpdateFormattedTextLines()
         {
             this._formattedTextLines = this.FormatText((this.HorizontalOverflow == HorizontalWrapMode.Wrap) ? this.rectTransform.rect.width : 99999f);
+            this._requireReformatText = false;
         }
 
+        /// <summary>
+        /// テキストを解析して指定した幅に収まるフォーマット済みテキストを取得します。
+        /// </summary>
+        /// <param name="width"></param>
+        /// <returns></returns>
         protected virtual TextLine[] FormatText(float width)
         {
             this.RefreshTextSourceIfNeeded();
@@ -197,7 +229,9 @@ namespace LetterWriter.Unity.Components
             }
 
             var textLinesArray = textLines.ToArray();
-            this._maxIndex = textLinesArray.SelectMany(x => x.PlacedGlyphs.Select(y => y.Index)).Max();
+            this._maxIndex = textLinesArray.Any() && textLinesArray[0].PlacedGlyphs.Any()
+                ? textLinesArray.SelectMany(x => x.PlacedGlyphs.Select(y => y.Index)).Max()
+                : 0;
 
             return textLinesArray;
         }
@@ -211,8 +245,7 @@ namespace LetterWriter.Unity.Components
             // 何か変化があったら再フォーマットする
             if (this._requireReformatText || this._previousRect != this.CachedRectTransform.rect)
             {
-                this.UpdateText();
-                this._requireReformatText = false;
+                this.UpdateFormattedTextLines();
             }
 
             // 開始位置

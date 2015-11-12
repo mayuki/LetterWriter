@@ -48,6 +48,7 @@ namespace LetterWriter
 
             var width = 0;
             var glyphs = new List<GlyphPlacement>();
+            var stackedModifierScopes = new Stack<TextModifierScope>(); // TextEndOfSegmentでTextModifierScopeが終わったときに積んでおく(禁則で逆方向に戻ることがあるから)
 
             var spacing = state.TextModifierScope.Spacing ?? 0;
             // 1-2-1 の 1
@@ -70,6 +71,7 @@ namespace LetterWriter
                 }
                 if (ptr.Current is TextEndOfSegment)
                 {
+                    stackedModifierScopes.Push(state.TextModifierScope);
                     state.TextModifierScope = state.TextModifierScope.Parent;
                 }
 
@@ -163,6 +165,11 @@ namespace LetterWriter
                             {
                                 state.TextModifierScope = state.TextModifierScope.Parent;
                             }
+                            // 巻き戻してTextEndOfSegmentが出てきたときはScopeの状態を戻す
+                            if (ptr.Current is TextEndOfSegment)
+                            {
+                                state.TextModifierScope = stackedModifierScopes.Pop();
+                            }
                         }
                         else
                         {
@@ -179,6 +186,11 @@ namespace LetterWriter
                                     if (ptr.Current is TextModifier)
                                     {
                                         state.TextModifierScope = state.TextModifierScope.Parent;
+                                    }
+                                    // 巻き戻してTextEndOfSegmentが出てきたときはScopeの状態を戻す
+                                    if (ptr.Current is TextEndOfSegment)
+                                    {
+                                        state.TextModifierScope = stackedModifierScopes.Pop();
                                     }
 
                                     // ルビグループは途中改行できないのでルビグループごと次の行へ送る
@@ -200,6 +212,7 @@ namespace LetterWriter
                                         {
                                             // 1文字も残らない(=TextRunが開始地点)ので消せないで終わる
                                             // 戻さなかったことにして次の行から始まるようにする
+                                            ptr.NextRun();
                                             goto BREAK_TEXTLINE;
                                         }
                                     }
@@ -251,6 +264,11 @@ namespace LetterWriter
                         {
                             state.TextModifierScope = state.TextModifierScope.Parent;
                         }
+                        // 巻き戻してTextEndOfSegmentが出てきたときはScopeの状態を戻す
+                        if (ptr.Current is TextEndOfSegment)
+                        {
+                            state.TextModifierScope = stackedModifierScopes.Pop();
+                        }
 
                         // ルビグループは途中改行できないのでルビグループごと次の行へ送る
                         // ただし行の始まりがこのルビグループだったらあきらめる
@@ -266,6 +284,7 @@ namespace LetterWriter
                             else
                             {
                                 // 1文字も残らない(=TextRunが開始地点)ので消せないで終わる
+                                ptr.NextRun();
                                 goto BREAK_TEXTLINE;
                             }
                         }

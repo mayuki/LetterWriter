@@ -30,6 +30,7 @@ namespace LetterWriter.SampleConsole
             //text = "substituted.";
             //text = "あいうえ<ruby value='び'>美</ruby>」";
             //text = "<ruby color='white' value='Nanodesu'>なのです</ruby>";
+            //text = "<ruby value=\"B\">A</ruby>》";
             var textSource = markupParser.Parse(text);
 
             var textSourceBuilder = new TextSourceBuilder();
@@ -94,7 +95,7 @@ namespace LetterWriter.SampleConsole
             var startAt = DateTime.Now;
             while (true)
             {
-                var textLine = textFormatter.FormatLine(textSource, 80, textLineBreakState);
+                var textLine = textFormatter.FormatLine(textSource, 40, textLineBreakState);
                 if (textLine == null)
                     break;
 

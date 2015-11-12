@@ -48,6 +48,7 @@
     <Compile Include="LineBreak.cs" />
     <Compile Include="LineBreakRule.cs" />
     <Compile Include="Markup\LightweightMarkupParser.cs" />
+    <Compile Include="Markup\MarkupExtensions.cs" />
     <Compile Include="Markup\MarkupNode.cs" />
     <Compile Include="Markup\LetterWriterMarkupParser.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

@@ -10,7 +10,6 @@ using LetterWriter.Unity.Markup;
 
 namespace LetterWriter.Unity.Components
 {
-    [ExecuteInEditMode]
     public class LetterWriterText : MaskableGraphic, ILayoutElement
     {
         private bool _requireReformatText = true;
@@ -26,6 +25,8 @@ namespace LetterWriter.Unity.Components
         {
             get { return this._cachedRectTransform ?? (this._cachedRectTransform = this.GetComponent<RectTransform>()); }
         }
+
+        public new Color color { get { return base.color; } set { base.color = value; this.MarkAsReformatRequired(); } }
 
         [SerializeField]
         private Font _font;
@@ -53,23 +54,21 @@ namespace LetterWriter.Unity.Components
         }
 
         [SerializeField]
-        private int _lineSpacing = 0;
-        public int LineSpacing
+        private bool _isLineHeightFixed = false;
+        /// <summary>
+        /// 一行の高さを固定値とするかどうかを取得、設定します。設定が有効な場合には行の高さはLineHeightに従うようになります。
+        /// </summary>
+        public bool IsLineHeightFixed
         {
-            get { return this._lineSpacing; }
-            set { this._lineSpacing = value; this.MarkAsReformatRequired(); }
-        }
-
-        [SerializeField]
-        private int _spacing = 0;
-        public int Spacing
-        {
-            get { return this._spacing; }
-            set { this._spacing = value; this.MarkAsReformatRequired(); }
+            get { return this._isLineHeightFixed; }
+            set { this._isLineHeightFixed = value; this.MarkAsRebuildRequired(); }
         }
 
         [SerializeField]
         private float _lineHeight = 1;
+        /// <summary>
+        /// 一行の高さを取得、設定します。1はフォントの高さと同等です。
+        /// </summary>
         public float LineHeight
         {
             get { return this._lineHeight; }
@@ -102,28 +101,36 @@ namespace LetterWriter.Unity.Components
 
         [SerializeField]
         private HorizontalWrapMode _horizontalOverflow = HorizontalWrapMode.Wrap;
+        /// <summary>
+        /// 横方向に対してのオーバーフローの制御を取得、設定します。
+        /// </summary>
         public HorizontalWrapMode HorizontalOverflow
         {
             get { return this._horizontalOverflow; }
-            set { this._horizontalOverflow = value; }
+            set { this._horizontalOverflow = value; this.MarkAsReformatRequired(); }
         }
 
         [SerializeField]
         private VerticalWrapMode _verticalOverflow = VerticalWrapMode.Overflow;
+        /// <summary>
+        /// 縦方向に対してのオーバーフローの制御を取得、設定します。
+        /// </summary>
         public VerticalWrapMode VerticalOverflow
         {
             get { return this._verticalOverflow; }
-            set { this._verticalOverflow = value; }
+            set { this._verticalOverflow = value; this.MarkAsReformatRequired(); }
         }
 
         [SerializeField]
         private bool _treatNewLineAsLineBreak = true;
+        /// <summary>
+        /// 改行文字を改行として扱うかどうかを取得、設定します。
+        /// </summary>
         public bool TreatNewLineAsLineBreak
         {
             get { return this._treatNewLineAsLineBreak; }
-            set { this._treatNewLineAsLineBreak = value; }
+            set { this._treatNewLineAsLineBreak = value; this.RefreshTextSourceIfNeeded(forceUpdate: true); this.MarkAsReformatRequired(); }
         }
-
 
         public override Texture mainTexture
         {
@@ -166,25 +173,25 @@ namespace LetterWriter.Unity.Components
         /// <summary>
         /// テキストソース(マークアップパース結果)の更新が必要であれば行います。
         /// </summary>
-        protected void RefreshTextSourceIfNeeded()
+        protected void RefreshTextSourceIfNeeded(bool forceUpdate = false)
         {
-            if (this._prevText != this._text || this._textSource == null)
+            if (this._prevText != this._text || this._textSource == null || forceUpdate)
             {
                 _markupParser.TreatNewLineAsLineBreak = this.TreatNewLineAsLineBreak;
                 this._textSource = _markupParser.Parse(this.Text);
                 this._prevText = this._text;
                 this._visibleLength = -1;
+
+                // フォーマット済みテキストも更新するお
+                this.UpdateFormattedTextLines();
             }
         }
 
         /// <summary>
-        /// Graphicsの再構築を要求します。
+        /// Graphicsの再構築を要求します。再フォーマットは要求しません。
         /// </summary>
         protected void MarkAsRebuildRequired()
         {
-            if (CanvasUpdateRegistry.IsRebuildingGraphics())
-                return;
-
             this.SetVerticesDirty();
         }
 
@@ -229,9 +236,7 @@ namespace LetterWriter.Unity.Components
             }
 
             var textLinesArray = textLines.ToArray();
-            this._maxIndex = textLinesArray.Any() && textLinesArray[0].PlacedGlyphs.Any()
-                ? textLinesArray.SelectMany(x => x.PlacedGlyphs.Select(y => y.Index)).Max()
-                : 0;
+            this._maxIndex = textLinesArray.SelectMany(x => x.PlacedGlyphs.Select(y => y.Index)).DefaultIfEmpty().Max();
 
             return textLinesArray;
         }
@@ -246,6 +251,7 @@ namespace LetterWriter.Unity.Components
             if (this._requireReformatText || this._previousRect != this.CachedRectTransform.rect)
             {
                 this.UpdateFormattedTextLines();
+                this._previousRect = this.CachedRectTransform.rect;
             }
 
             // 開始位置
@@ -264,8 +270,8 @@ namespace LetterWriter.Unity.Components
                 {
                     var lineHeight = (this.FontSize + (leadingBase * this.FontSize));
 
-                    // 上に突き抜けてる分を計算してあげないと…
-                    if (textLine.PlacedGlyphs.Any(p => p.Y < 0))
+                    // 行の高さが固定ではない場合には、上に突き抜けてる分を計算してあげる必要がある
+                    if (!this.IsLineHeightFixed && textLine.PlacedGlyphs.Any(p => p.Y < 0))
                     {
                         lineHeight += textLine.PlacedGlyphs.Where(p => p.Y < 0).Max(p => p.Glyph.Height);
                     }
@@ -328,8 +334,8 @@ namespace LetterWriter.Unity.Components
             {
                 var lineHeight = (this.FontSize + (leadingBase * this.FontSize));
 
-                // 上に突き抜けてる分を計算してあげないと…
-                if (textLine.PlacedGlyphs.Any(p => p.Y < 0))
+                // 行の高さが固定ではない場合には、上に突き抜けてる分を計算してあげる必要がある
+                if (!this.IsLineHeightFixed && textLine.PlacedGlyphs.Any(p => p.Y < 0))
                 {
                     lineHeight += textLine.PlacedGlyphs.Where(p => p.Y < 0).Max(p => p.Glyph.Height);
                 }
@@ -370,9 +376,17 @@ namespace LetterWriter.Unity.Components
         {
             this.Font = Resources.GetBuiltinResource<Font>("Arial.ttf");
         }
+
+        protected override void OnValidate()
+        {
+            base.OnValidate();
+
+            this.RefreshTextSourceIfNeeded(forceUpdate:true);
+            this.MarkAsReformatRequired();
+        }
 #endif
 
-#region ILayoutElement Implementation
+        #region ILayoutElement Implementation
 
         public void CalculateLayoutInputHorizontal()
         {

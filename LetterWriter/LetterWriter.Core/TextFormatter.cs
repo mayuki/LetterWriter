@@ -86,7 +86,7 @@ namespace LetterWriter
                     // 親文字列の幅
                     // TODO: spacing
                     var textRunWidth = rubyTextRunGlyphs.Sum(x => x.AdvanceWidth + (spacing * x.AdvanceWidth));
-                    var textRunHeight = rubyTextRunGlyphs.Max(x => x.Height); /* lineSpacing */
+                    var textRunHeight = rubyTextRunGlyphs.Select(x => x.Height).DefaultIfEmpty().Max(); /* lineSpacing */
                     // ルビ文字列の幅
                     // TODO: spacing
                     var textRunRubyWidth = rubyTextRunRubyGlyphs.Sum(x => x.AdvanceWidth /* + rubySpacing */);

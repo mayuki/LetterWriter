@@ -270,6 +270,9 @@ namespace LetterWriter.Unity.Components
                 {
                     var lineHeight = (this.FontSize + (leadingBase * this.FontSize));
 
+                    // 上にLineHeight-1の半分の空き
+                    y -= (lineHeight * (this.LineHeight - 1)) / 2;
+
                     // 行の高さが固定ではない場合には、上に突き抜けてる分を計算してあげる必要がある
                     if (!this.IsLineHeightFixed && textLine.PlacedGlyphs.Any(p => p.Y < 0))
                     {
@@ -302,7 +305,8 @@ namespace LetterWriter.Unity.Components
                         vertexHelper.AddUIVertexQuad(uiVertexes);
                     }
 
-                    y -= lineHeight * this.LineHeight;
+                    // 1行分下に進めて、さらにLineHeight-1の半分の空きを足す
+                    y -= (lineHeight * (1 + ((this.LineHeight - 1) / 2)));
                 }
 
                 vertexHelper.FillMesh(m);
@@ -462,7 +466,7 @@ namespace LetterWriter.Unity.Components
                 var lineHeight = (this.FontSize + (leadingBase * this.FontSize));
 
                 // 上に突き抜けてる分を計算してあげないと…
-                if (textLine.PlacedGlyphs.Any(p => p.Y < 0))
+                if (!this.IsLineHeightFixed && textLine.PlacedGlyphs.Any(p => p.Y < 0))
                 {
                     lineHeight += textLine.PlacedGlyphs.Where(p => p.Y < 0).Max(p => p.Glyph.Height);
                 }

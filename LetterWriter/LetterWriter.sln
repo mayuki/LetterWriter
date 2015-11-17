@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LetterWriter.SampleConsole"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LetterWriter.Core", "LetterWriter.Core\LetterWriter.Core.csproj", "{67221F34-351B-4C04-81D5-0BA76A6DA5B0}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LetterWriter.Tests", "LetterWriter.Tests\LetterWriter.Tests.csproj", "{36C59723-067F-4501-92C3-3A1F1C71A94E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{67221F34-351B-4C04-81D5-0BA76A6DA5B0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{67221F34-351B-4C04-81D5-0BA76A6DA5B0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{67221F34-351B-4C04-81D5-0BA76A6DA5B0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{36C59723-067F-4501-92C3-3A1F1C71A94E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{36C59723-067F-4501-92C3-3A1F1C71A94E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{36C59723-067F-4501-92C3-3A1F1C71A94E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{36C59723-067F-4501-92C3-3A1F1C71A94E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

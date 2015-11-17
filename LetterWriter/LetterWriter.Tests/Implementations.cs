@@ -4,12 +4,44 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using LetterWriter.Markup;
 
 /// <summary>
 /// テストに必要な各種の仮の実装を含む名前空間です。
 /// </summary>
 namespace LetterWriter.Tests.Implementations
 {
+    public class ConsoleMarkupParser : LetterWriterMarkupParser
+    {
+        protected override TextRun[] VisitMarkupElement(Element element, string tagNameUpper)
+        {
+            if (tagNameUpper == "COLOR")
+            {
+                return
+                    new TextRun[]
+                    {
+                        new ConsoleTextModifier() { Color = (ConsoleColor) Enum.Parse(typeof (ConsoleColor), element.Attributes["Value"], true) }
+                    }
+                    .Concat(base.VisitMarkupElement(element, tagNameUpper))
+                    .Concat(new TextRun[] { new TextEndOfSegment() })
+                    .ToArray();
+            }
+
+            if (tagNameUpper == "B")
+            {
+                return new TextRun[]
+                    {
+                        new ConsoleTextModifier() { IsBold = true }
+                    }
+                    .Concat(base.VisitMarkupElement(element, tagNameUpper))
+                    .Concat(new TextRun[] { new TextEndOfSegment() })
+                    .ToArray();
+            }
+
+            return base.VisitMarkupElement(element, tagNameUpper);
+        }
+    }
+
     public class ConsoleGlyph : Glyph
     {
         public ConsoleColor Color { get; set; }

@@ -23,6 +23,11 @@ namespace LetterWriter
 
         public abstract TextModifierScope CreateTextModifierScope(TextModifierScope parent, TextModifier textModifier);
 
+        public virtual GlyphPlacement CreateGlyphPlacement(TextModifierScope currenTextModifierScope, IGlyph glyph, int x, int y, int index, int indexInTextRun, int textRunLength)
+        {
+            return new GlyphPlacement(glyph, x, y, index);
+        }
+
         public TextLine FormatLine(TextSource textSource, int paragraphWidth, TextLineBreakState state)
         {
             // TextModifierScopeが未作成
@@ -117,9 +122,10 @@ namespace LetterWriter
                     var rubyWidth = width; // 開始位置は親文字を基準にする
                     var rubyIndex = 0f;
                     var rubyIndexStep = rubyTextRunGlyphs.Length / (float)rubyTextRunRubyGlyphs.Length;
+                    var rubyIndexInTextRun = 0;
                     foreach (var glyph in rubyTextRunRubyGlyphs)
                     {
-                        glyphs.Add(new GlyphPlacement(glyph, (int)(rubyWidth + rubySpace), -textRunHeight, ptr.GlyphIndex + (int)Math.Ceiling(rubyIndex += rubyIndexStep) - 1));
+                        glyphs.Add(this.CreateGlyphPlacement(state.TextModifierScope, glyph, (int)(rubyWidth + rubySpace), -textRunHeight, ptr.GlyphIndex + (int)Math.Ceiling(rubyIndex += rubyIndexStep) - 1, rubyIndexInTextRun++, rubyTextRunRubyGlyphs.Length));
 
                         // TODO: spacing
                         rubyWidth = rubyWidth + glyph.AdvanceWidth + (int)(rubySpace * 2) /* + spacing */;
@@ -133,6 +139,7 @@ namespace LetterWriter
 
                 // 一文字ずつ置いていく
                 var textRunGlyphs = ptr.Current.GetCharacters(this.GlyphProvider, state.TextModifierScope);
+                var indexInTextRun = 0;
                 while (true)
                 {
                     if (ptr.Next())
@@ -230,7 +237,7 @@ namespace LetterWriter
                         goto BREAK_TEXTLINE;
                     }
 
-                    glyphs.Add(new GlyphPlacement(glyph, (int)(width + rubyParantSpace), 0, ptr.GlyphIndex++));
+                    glyphs.Add(this.CreateGlyphPlacement(state.TextModifierScope, glyph, (int)(width + rubyParantSpace), 0, ptr.GlyphIndex++, indexInTextRun++, textRunGlyphs.Length));
 
                     width = nextWidth;
                 }

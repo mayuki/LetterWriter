@@ -29,7 +29,19 @@ namespace LetterWriter.Unity
 
         public override TextModifierScope CreateTextModifierScope(TextModifierScope parent, TextModifier textModifier)
         {
-            return new UnityTextModifierScope((UnityTextModifierScope)parent, (UnityTextModifier)textModifier ?? new UnityTextModifier { FontSize = this.FontSize, FontStyle = FontStyle.Normal, Spacing = 0, RubyFontScale = 0.5f, Color = this.Color });
+            return new UnityTextModifierScope((UnityTextModifierScope)parent, (UnityTextModifier)(textModifier ?? this.CreateDefaultTextModifier()));
+        }
+
+        public virtual TextModifier CreateDefaultTextModifier()
+        {
+            return new UnityTextModifier
+            {
+                FontSize = this.FontSize,
+                FontStyle = FontStyle.Normal,
+                Spacing = 0,
+                RubyFontScale = 0.5f,
+                Color = this.Color
+            };
         }
     }
 }

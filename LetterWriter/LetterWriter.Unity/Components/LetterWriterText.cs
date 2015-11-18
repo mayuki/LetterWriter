@@ -100,6 +100,21 @@ namespace LetterWriter.Unity.Components
         }
 
         [SerializeField]
+        private bool _isHeightDependingOnVisibleLength = false;
+        /// <summary>
+        /// 要素の高さが<see cref="VisibleLength" />プロパティに依存するかどうかを取得、設定します。
+        /// </summary>
+        public bool IsHeightDepenedingOnVisibleLength
+        {
+            get { return this._isHeightDependingOnVisibleLength; }
+            set
+            {
+                this._isHeightDependingOnVisibleLength = value;
+                this.MarkAsReformatRequired();
+            }
+        }
+
+        [SerializeField]
         private HorizontalWrapMode _horizontalOverflow = HorizontalWrapMode.Wrap;
         /// <summary>
         /// 横方向に対してのオーバーフローの制御を取得、設定します。
@@ -175,7 +190,7 @@ namespace LetterWriter.Unity.Components
         /// </summary>
         protected void RefreshTextSourceIfNeeded(bool forceUpdate = false)
         {
-            if (this._prevText != this._text || this._textSource == null || forceUpdate)
+            if (this._prevText != this._text || this._textSource == null || _markupParser.TreatNewLineAsLineBreak != this.TreatNewLineAsLineBreak || forceUpdate)
             {
                 _markupParser.TreatNewLineAsLineBreak = this.TreatNewLineAsLineBreak;
                 this._textSource = _markupParser.Parse(this.Text);
@@ -385,7 +400,7 @@ namespace LetterWriter.Unity.Components
         {
             base.OnValidate();
 
-            this.RefreshTextSourceIfNeeded(forceUpdate:true);
+            this.RefreshTextSourceIfNeeded();
             this.MarkAsReformatRequired();
         }
 #endif
@@ -472,6 +487,13 @@ namespace LetterWriter.Unity.Components
                 }
 
                 height += lineHeight * this.LineHeight;
+
+                // 表示している文字数が高さに影響するのであればそれに応じる
+                if (this.IsHeightDepenedingOnVisibleLength &&
+                    (this.VisibleLength != -1 && this.VisibleLength <= textLine.PlacedGlyphs.DefaultIfEmpty().Max(x => x.Index)))
+                {
+                    break;
+                }
             }
 
             height += (leadingBase * this.FontSize);

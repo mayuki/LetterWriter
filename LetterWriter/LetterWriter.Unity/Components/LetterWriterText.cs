@@ -298,7 +298,7 @@ namespace LetterWriter.Unity.Components
             return new UnityTextFormatter(this.Font, this.FontSize, this.color);
         }
 
-#if UNITY_5 && UNITY_5_2
+#if UNITY_5_2 || UNITY_5_3
         protected override void OnPopulateMesh(Mesh m)
         {
             if (this.Font == null)
@@ -388,7 +388,7 @@ namespace LetterWriter.Unity.Components
             }
         }
 #endif
-#if UNITY_5 && !UNITY_5_2
+#if UNITY_5_0 || UNITY_5_1
         protected override void OnFillVBO(List<UIVertex> vbo)
         {
             if (this.Font == null)

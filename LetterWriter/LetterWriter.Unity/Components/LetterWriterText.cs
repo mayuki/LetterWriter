@@ -221,6 +221,9 @@ namespace LetterWriter.Unity.Components
         /// </summary>
         public void MarkAsRebuildRequired()
         {
+            if (CanvasUpdateRegistry.IsRebuildingGraphics())
+                return;
+
             this.SetVerticesDirty();
         }
 

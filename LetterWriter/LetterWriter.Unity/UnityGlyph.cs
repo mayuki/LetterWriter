@@ -9,6 +9,8 @@ namespace LetterWriter.Unity
 {
     public class UnityGlyph : Glyph
     {
+        private UIVertex[] _baseVertices = new[] { UIVertex.simpleVert, UIVertex.simpleVert, UIVertex.simpleVert, UIVertex.simpleVert, };
+
         public CharacterInfo CharacterInfo { get; private set; }
 
         public Color? Color { get; private set; }
@@ -17,41 +19,43 @@ namespace LetterWriter.Unity
         {
             this.CharacterInfo = characterInfo;
             this.Color = color;
+            this.UpdateBaseVertices();
         }
 
         public UIVertex[] BaseVertices
         {
             get
             {
-                var verts = Enumerable.Range(0, 4).Select(_ => UIVertex.simpleVert).ToArray();
+                return (UIVertex[])this._baseVertices.Clone();
+            }
+        }
 
-                // MEMO: なぜか高さはuGUIと微妙に違うサイズのが出てくる…。TextGeneratorが誤差であれになってるのではという気もしなくなくもなくもない。
+        private void UpdateBaseVertices()
+        {
+            // MEMO: なぜか高さはuGUIと微妙に違うサイズのが出てくる…。TextGeneratorが誤差であれになってるのではという気もしなくなくもなくもない。
 
-                // 左下
-                verts[0].uv0 = this.CharacterInfo.uvBottomLeft;
-                verts[0].position = new Vector3(this.CharacterInfo.minX, this.CharacterInfo.minY);
+            // 左下
+            this._baseVertices[0].uv0 = this.CharacterInfo.uvBottomLeft;
+            this._baseVertices[0].position = new Vector3(this.CharacterInfo.minX, this.CharacterInfo.minY);
 
-                // 右下
-                verts[1].uv0 = this.CharacterInfo.uvBottomRight;
-                verts[1].position = new Vector3(this.CharacterInfo.maxX, this.CharacterInfo.minY);
+            // 右下
+            this._baseVertices[1].uv0 = this.CharacterInfo.uvBottomRight;
+            this._baseVertices[1].position = new Vector3(this.CharacterInfo.maxX, this.CharacterInfo.minY);
 
-                // 右上
-                verts[2].uv0 = this.CharacterInfo.uvTopRight;
-                verts[2].position = new Vector3(this.CharacterInfo.maxX, this.CharacterInfo.maxY);
+            // 右上
+            this._baseVertices[2].uv0 = this.CharacterInfo.uvTopRight;
+            this._baseVertices[2].position = new Vector3(this.CharacterInfo.maxX, this.CharacterInfo.maxY);
 
-                // 左上
-                verts[3].uv0 = this.CharacterInfo.uvTopLeft;
-                verts[3].position = new Vector3(this.CharacterInfo.minX, this.CharacterInfo.maxY);
+            // 左上
+            this._baseVertices[3].uv0 = this.CharacterInfo.uvTopLeft;
+            this._baseVertices[3].position = new Vector3(this.CharacterInfo.minX, this.CharacterInfo.maxY);
 
-                if (this.Color.HasValue)
-                {
-                    verts[0].color = this.Color.Value;
-                    verts[1].color = this.Color.Value;
-                    verts[2].color = this.Color.Value;
-                    verts[3].color = this.Color.Value;
-                }
-
-                return verts;
+            if (this.Color.HasValue)
+            {
+                this._baseVertices[0].color = this.Color.Value;
+                this._baseVertices[1].color = this.Color.Value;
+                this._baseVertices[2].color = this.Color.Value;
+                this._baseVertices[3].color = this.Color.Value;
             }
         }
     }

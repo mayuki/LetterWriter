@@ -283,7 +283,7 @@ namespace LetterWriter.Unity.Components
                 return this.ExtensibilityProvider.CreateMarkupParser();
             }
 
-            return new LetterWriterMarkupParser();
+            return new UnityMarkupParser();
         }
 
         /// <summary>

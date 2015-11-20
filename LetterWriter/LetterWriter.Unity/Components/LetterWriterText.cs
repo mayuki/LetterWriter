@@ -209,7 +209,6 @@ namespace LetterWriter.Unity.Components
                 this._markupParser.TreatNewLineAsLineBreak = this.TreatNewLineAsLineBreak;
                 this._textSource = _markupParser.Parse(this.Text);
                 this._prevText = this._text;
-                this._visibleLength = -1;
 
                 // フォーマット済みテキストも更新するお
                 this.UpdateFormattedTextLines();
@@ -482,6 +481,7 @@ namespace LetterWriter.Unity.Components
 
             this._textFormatter = null;
             this._markupParser = null;
+            this._visibleLength = -1;
         }
 
         protected override void OnValidate()

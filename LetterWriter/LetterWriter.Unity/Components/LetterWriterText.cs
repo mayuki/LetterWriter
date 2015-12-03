@@ -19,7 +19,7 @@ namespace LetterWriter.Unity.Components
         private string _prevText; // TODO: 変更チェックが雑なのであとで直す
 
         private LetterWriterMarkupParser _markupParser;
-        private TextFormatter _textFormatter;
+        private TextFormatter _cachedTextFormatter;
 
         private RectTransform _cachedRectTransform;
         public RectTransform CachedRectTransform
@@ -27,7 +27,16 @@ namespace LetterWriter.Unity.Components
             get { return this._cachedRectTransform ?? (this._cachedRectTransform = this.GetComponent<RectTransform>()); }
         }
 
-        public new Color color { get { return base.color; } set { base.color = value; this.MarkAsReformatRequired(); } }
+        public new Color color
+        {
+            get { return base.color; }
+            set
+            {
+                base.color = value;
+                this.MarkAsReformatRequired();
+                this._cachedTextFormatter = null;
+            }
+        }
 
         [SerializeField]
         private LetterWriterExtensibilityProvider _extensibilityProvider;
@@ -42,7 +51,12 @@ namespace LetterWriter.Unity.Components
         public Font Font
         {
             get { return this._font; }
-            set { this._font = value; this.MarkAsReformatRequired(); }
+            set
+            {
+                this._font = value;
+                this.MarkAsReformatRequired();
+                this._cachedTextFormatter = null;
+            }
         }
 
         [SerializeField]
@@ -59,7 +73,12 @@ namespace LetterWriter.Unity.Components
         public int FontSize
         {
             get { return this._fontSize; }
-            set { this._fontSize = value; this.MarkAsReformatRequired(); }
+            set
+            {
+                this._fontSize = value;
+                this.MarkAsReformatRequired();
+                this._cachedTextFormatter = null;
+            }
         }
 
         [SerializeField]
@@ -223,6 +242,8 @@ namespace LetterWriter.Unity.Components
             if (CanvasUpdateRegistry.IsRebuildingGraphics())
                 return;
 
+            this._cachedTextFormatter = null;
+
             this.SetVerticesDirty();
         }
 
@@ -254,12 +275,12 @@ namespace LetterWriter.Unity.Components
             this.RefreshTextSourceIfNeeded();
 
             var textLineBreakState = new TextLineBreakState();
-            this._textFormatter = this._textFormatter ?? this.CreateTextFormatter();
+            this._cachedTextFormatter = this._cachedTextFormatter ?? this.CreateTextFormatter();
 
             var textLines = new List<TextLine>();
             while (true)
             {
-                var textLine = this._textFormatter.FormatLine(this._textSource, (int)width, textLineBreakState);
+                var textLine = this._cachedTextFormatter.FormatLine(this._textSource, (int)width, textLineBreakState);
                 if (textLine == null)
                     break;
 
@@ -479,7 +500,7 @@ namespace LetterWriter.Unity.Components
         {
             this.Font = Resources.GetBuiltinResource<Font>("Arial.ttf");
 
-            this._textFormatter = null;
+            this._cachedTextFormatter = null;
             this._markupParser = null;
             this._visibleLength = -1;
         }
@@ -488,7 +509,7 @@ namespace LetterWriter.Unity.Components
         {
             base.OnValidate();
 
-            this._textFormatter = null;
+            this._cachedTextFormatter = null;
             this._markupParser = null;
 
             this.RefreshTextSourceIfNeeded();

@@ -277,6 +277,8 @@ namespace LetterWriter.Unity.Components
         /// <returns></returns>
         protected virtual TextLine[] FormatText(float width)
         {
+            if (this._textSource == null) return new TextLine[0];
+
             var textLineBreakState = new TextLineBreakState();
             if (this._markAsRebuildTextFormatter || this._cachedTextFormatter == null)
             {

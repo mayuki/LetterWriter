@@ -1,5 +1,7 @@
 # LetterWriter
 
+[![Build status](https://ci.appveyor.com/api/projects/status/7jifk7ee7a7266rk?svg=true)](https://ci.appveyor.com/project/mayuki/letterwriter)
+
 Unity向けの日本語テキスト表示ライブラリです。このライブラリ(コンポーネント)を利用することで標準機能ではできないルビ表示、禁則処理といったことが行えます。
 
 例えば会話やお知らせのような文章を表示するのに利用できます。

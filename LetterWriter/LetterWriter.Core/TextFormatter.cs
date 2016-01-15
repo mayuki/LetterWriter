@@ -140,6 +140,9 @@ namespace LetterWriter
                 // 一文字ずつ置いていく
                 var textRunGlyphs = ptr.Current.GetCharacters(this.GlyphProvider, state.TextModifierScope);
                 var indexInTextRun = 0;
+                var isSpecialCaseCanWrap = false; // テキストの改行禁止の途中で折り返しを許可する特殊なフラグ
+                var initialWidth = width;
+
                 while (true)
                 {
                     if (ptr.Next())
@@ -184,7 +187,7 @@ namespace LetterWriter
 
                             // 次の行の開始となる文字(=現在 glyph に入ってるもの)が禁則文字の場合にはさらに巻き戻して前の文字を追い出す必要がある
                             // ただし1文字以上は含まれていてほしいので2文字以上のときだけ。
-                            while (!this.LineBreakRule.CanWrap(nextGlyphBeginOfLine) && ptr.Current.CanWrap && glyphs.Count > 1)
+                            while (!(isSpecialCaseCanWrap || this.LineBreakRule.CanWrap(nextGlyphBeginOfLine)) && ptr.Current.CanWrap && glyphs.Count > 0)
                             {
                                 // 前の文字 or TextRunに
                                 if (ptr.Back())
@@ -231,6 +234,14 @@ namespace LetterWriter
 
                                     nextGlyphBeginOfLine = lastPlacedGlyph.Glyph;
                                 }
+                            }
+
+                            // 全部追い出されてしまった場合には途中での改行を特別に許可してやり直し
+                            if (glyphs.Count == 0)
+                            {
+                                isSpecialCaseCanWrap = true;
+                                width = initialWidth;
+                                continue;
                             }
                         }
 

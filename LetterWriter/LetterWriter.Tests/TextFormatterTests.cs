@@ -17,6 +17,15 @@ namespace LetterWriter.Tests
         private LetterWriterMarkupParser _markupParser = new ConsoleMarkupParser();
 
         [TestMethod]
+        public void Empty()
+        {
+            var textSource = this._markupParser.Parse("");
+            var textLines = this.FormatText(textSource, 6);
+
+            textLines.Length.Is(0);
+        }
+
+        [TestMethod]
         public void Alphabet_01()
         {
             var textSource = this._markupParser.Parse("Hauhau");
@@ -47,6 +56,61 @@ maumau
             ValidateTextWithoutRuby(textLines, @"
 Hauhau
 maumau
+");
+        }
+
+        [TestMethod]
+        public void Alphabet_04()
+        {
+            var textSource = this._markupParser.Parse("Hauhau1 maumau");
+            var textLines = this.FormatText(textSource, 6);
+
+            ValidateTextWithoutRuby(textLines, @"
+Hauhau
+1
+maumau
+");
+        }
+
+        [TestMethod]
+        public void Alphabet_With_Ruby_01()
+        {
+            var textSource = this._markupParser.Parse("Hauhaumaumau<ruby value=\"moge\">hoge</ruby>fuga");
+            var textLines = this.FormatText(textSource, 6);
+
+            ValidateTextWithoutRuby(textLines, @"
+Hauhau
+maumau
+hoge
+fuga
+");
+        }
+
+        [TestMethod]
+        public void Alphabet_With_Ruby_02()
+        {
+            var textSource = this._markupParser.Parse("<ruby value=\"moge\">hoge</ruby>Hauhaumaumaufuga");
+            var textLines = this.FormatText(textSource, 6);
+
+            ValidateTextWithoutRuby(textLines, @"
+hoge
+Hauhau
+maumau
+fuga
+");
+        }
+
+        [TestMethod]
+        public void Alphabet_With_Ruby_03()
+        {
+            var textSource = this._markupParser.Parse("<ruby value=\"moge\">hogehoge</ruby>Hauhaumaumaufuga");
+            var textLines = this.FormatText(textSource, 6);
+
+            ValidateTextWithoutRuby(textLines, @"
+hogehoge
+Hauhau
+maumau
+fuga
 ");
         }
 
@@ -111,7 +175,11 @@ maumau
 
             for (var i = 0; i < expectedLines.Length; i++)
             {
-                var joinedString = String.Join("", textLines[i].PlacedGlyphs.Select(x => x.Glyph).OfType<Glyph>().Select(x => x.Character));
+                var joinedString = String.Join("", textLines[i].PlacedGlyphs
+                    .Where(x => x.Y == 0) // Rubyは-1になってるのでそれを除く(地の文はY=0)
+                    .Select(x => x.Glyph)
+                    .OfType<Glyph>()
+                    .Select(x => x.Character));
                 joinedString.Is(expectedLines[i], "行:" + i);
             }
         }

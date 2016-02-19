@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -31,8 +32,11 @@ namespace LetterWriter.SampleConsole
             //text = "あいうえ<ruby value='び'>美</ruby>」";
             //text = "<ruby color='white' value='Nanodesu'>なのです</ruby>";
             //text = "<ruby value=\"B\">A</ruby>》";
-            text = "hogemogeaaabc<ruby aa>hoge</ruby>";
+            //text = "hogemogeaaabc<ruby aa>hoge</ruby>";
             var textSource = markupParser.Parse(text);
+            textSource = markupParser.Parse(text);
+            textSource = markupParser.Parse(text);
+            textSource = markupParser.Parse(text);
 
             var textSourceBuilder = new TextSourceBuilder();
             textSourceBuilder
@@ -135,18 +139,14 @@ namespace LetterWriter.SampleConsole
 
     class ConsoleMarkupParser : LetterWriterMarkupParser
     {
-        protected override TextRun[] VisitMarkupElement(Element element, string tagNameUpper)
+        protected override IEnumerable<TextRun> VisitMarkupElement(Element element, string tagNameUpper)
         {
             if (tagNameUpper == "COLOR")
             {
-                return
-                    new TextRun[]
-                    {
-                        new ConsoleTextModifier() { Color = (ConsoleColor) Enum.Parse(typeof (ConsoleColor), element.Attributes["Value"], true) }
-                    }
-                    .Concat(base.VisitMarkupElement(element, tagNameUpper))
-                    .Concat(new TextRun[] { new TextEndOfSegment() })
-                    .ToArray();
+                yield return new ConsoleTextModifier() { Color = (ConsoleColor) Enum.Parse(typeof (ConsoleColor), element.Attributes["Value"], true) };
+                foreach (var x in base.VisitMarkupElement(element, tagNameUpper)) yield return x;
+                yield return TextEndOfSegment.Default;
+                yield break;
             }
 
             if (tagNameUpper == "RUBY")
@@ -159,25 +159,21 @@ namespace LetterWriter.SampleConsole
                 //        .Concat(new TextRun[] { new TextEndOfSegment() })
                 //        .ToArray();
                 //}
-                return
-                    new TextRun[] { new ConsoleTextModifier() {  } }
-                        .Concat(base.VisitMarkupElement(element, tagNameUpper))
-                        .Concat(new TextRun[] { new TextEndOfSegment() })
-                        .ToArray();
+                yield return new ConsoleTextModifier() { };
+                foreach (var x in base.VisitMarkupElement(element, tagNameUpper)) yield return x;
+                yield return TextEndOfSegment.Default;
+                yield break;
             }
 
             if (tagNameUpper == "B")
             {
-                return new TextRun[]
-                    {
-                        new ConsoleTextModifier() { IsBold = true }
-                    }
-                    .Concat(base.VisitMarkupElement(element, tagNameUpper))
-                    .Concat(new TextRun[] { new TextEndOfSegment() })
-                    .ToArray();
+                yield return new ConsoleTextModifier() { IsBold = true };
+                foreach (var x in base.VisitMarkupElement(element, tagNameUpper)) yield return x;
+                yield return TextEndOfSegment.Default;
+                yield break;
             }
 
-            return base.VisitMarkupElement(element, tagNameUpper);
+            foreach (var x in base.VisitMarkupElement(element, tagNameUpper)) yield return x;
         }
     }
 

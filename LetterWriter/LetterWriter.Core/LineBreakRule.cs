@@ -27,7 +27,7 @@ namespace LetterWriter
                 cat == UnicodeCategory.DecimalDigitNumber ||
                 cat == UnicodeCategory.LowercaseLetter ||
                 cat == UnicodeCategory.UppercaseLetter
-                );
+            );
         }
     }
 }

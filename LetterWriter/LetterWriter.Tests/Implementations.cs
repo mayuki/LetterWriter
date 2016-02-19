@@ -13,32 +13,25 @@ namespace LetterWriter.Tests.Implementations
 {
     public class ConsoleMarkupParser : LetterWriterMarkupParser
     {
-        protected override TextRun[] VisitMarkupElement(Element element, string tagNameUpper)
+        protected override IEnumerable<TextRun> VisitMarkupElement(Element element, string tagNameUpper)
         {
             if (tagNameUpper == "COLOR")
             {
-                return
-                    new TextRun[]
-                    {
-                        new ConsoleTextModifier() { Color = (ConsoleColor) Enum.Parse(typeof (ConsoleColor), element.Attributes["Value"], true) }
-                    }
-                    .Concat(base.VisitMarkupElement(element, tagNameUpper))
-                    .Concat(new TextRun[] { new TextEndOfSegment() })
-                    .ToArray();
+                yield return new ConsoleTextModifier() { Color = (ConsoleColor)Enum.Parse(typeof(ConsoleColor), element.Attributes["Value"], true) };
+                foreach (var x in base.VisitMarkupElement(element, tagNameUpper)) yield return x;
+                yield return TextEndOfSegment.Default;
+                yield break;
             }
 
             if (tagNameUpper == "B")
             {
-                return new TextRun[]
-                    {
-                        new ConsoleTextModifier() { IsBold = true }
-                    }
-                    .Concat(base.VisitMarkupElement(element, tagNameUpper))
-                    .Concat(new TextRun[] { new TextEndOfSegment() })
-                    .ToArray();
+                yield return new ConsoleTextModifier() { IsBold = true };
+                foreach (var x in base.VisitMarkupElement(element, tagNameUpper)) yield return x;
+                yield return TextEndOfSegment.Default;
+                yield break;
             }
 
-            return base.VisitMarkupElement(element, tagNameUpper);
+            foreach (var x in base.VisitMarkupElement(element, tagNameUpper)) yield return x;
         }
     }
 

@@ -319,7 +319,7 @@ namespace LetterWriter
             state.GlyphLastIndex = ptr.GlyphIndex;
             return new TextLine()
             {
-                PlacedGlyphs = glyphs.Where(x => x != GlyphPlacement.Empty).ToArray(),
+                PlacedGlyphs = glyphs.Where(x => !x.Equals(GlyphPlacement.Empty)).ToArray(),
             };
         }
 

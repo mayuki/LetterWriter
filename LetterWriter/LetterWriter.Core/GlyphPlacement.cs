@@ -1,9 +1,10 @@
+using System;
 using System.Diagnostics;
 
 namespace LetterWriter
 {
     [DebuggerDisplay("GlyphPlacement: {Glyph,nq} | ({X,nq}, {Y,nq})")]
-    public class GlyphPlacement
+    public struct GlyphPlacement : IEquatable<GlyphPlacement>
     {
         public IGlyph Glyph { get; set; }
         public int X { get; set; }
@@ -23,6 +24,14 @@ namespace LetterWriter
             this.X = x;
             this.Y = y;
             this.Index = index;
+        }
+
+        public bool Equals(GlyphPlacement other)
+        {
+            return this.Glyph == other.Glyph &&
+                   this.Index == other.Index &&
+                   this.X == other.X &&
+                   this.Y == other.Y;
         }
     }
 }

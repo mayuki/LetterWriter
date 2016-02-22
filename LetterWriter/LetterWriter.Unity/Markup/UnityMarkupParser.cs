@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using LetterWriter.Markup;
 using LetterWriter.Unity.Components;
+using UnityEditor;
 using UnityEngine;
 
 namespace LetterWriter.Unity.Markup
@@ -26,80 +27,70 @@ namespace LetterWriter.Unity.Markup
         };
 
 
-        protected override TextRun[] VisitMarkupElement(Element element, string tagNameUpper)
+        protected override IEnumerable<TextRun> VisitMarkupElement(Element element, string tagNameUpper)
         {
-            if (tagNameUpper == "RUBY")
+            switch (tagNameUpper)
             {
-                Color? color = null;
-                float? scale = null;
+                case "RUBY":
+                    Color? color = null;
+                    float? scale = null;
 
-                if (element.Attributes.ContainsKey("color"))
-                {
-                    color = this._colorTable[element.Attributes["Color"]];
-                }
-                if (element.Attributes.ContainsKey("scale"))
-                {
-                    var tmpSize = 0f;
-                    if (Single.TryParse(element.Attributes["Scale"], out tmpSize))
+                    if (element.Attributes.ContainsKey("color"))
                     {
-                        scale = tmpSize;
+                        color = this._colorTable[element.Attributes["Color"]];
                     }
-                }
-
-                return
-                        new TextRun[] { new UnityTextModifier() { RubyColor = color, RubyFontScale = scale } }
-                        .Concat(base.VisitMarkupElement(element, tagNameUpper))
-                        .Concat(new TextRun[] { new TextEndOfSegment() })
-                        .ToArray();
-            }
-
-            if (tagNameUpper == "COLOR")
-            {
-                var value = element.GetAttribute("Value");
-                if (!_colorTable.ContainsKey(value))
-                    return base.VisitMarkupElement(element, tagNameUpper);
-
-                return
-                    new TextRun[]
+                    if (element.Attributes.ContainsKey("scale"))
                     {
-                        new UnityTextModifier() { Color = this._colorTable[value] }
-                    }
-                    .Concat(base.VisitMarkupElement(element, tagNameUpper))
-                    .Concat(new TextRun[] { new TextEndOfSegment() })
-                    .ToArray();
-            }
-            if (tagNameUpper == "SIZE")
-            {
-                var size = 0;
-                if (Int32.TryParse(element.GetAttribute("Value"), out size))
-                {
-                    return
-                        new TextRun[]
+                        var tmpSize = 0f;
+                        if (Single.TryParse(element.Attributes["Scale"], out tmpSize))
                         {
-                            new UnityTextModifier() { FontSize = size }
+                            scale = tmpSize;
                         }
-                        .Concat(base.VisitMarkupElement(element, tagNameUpper))
-                        .Concat(new TextRun[] { new TextEndOfSegment() })
-                        .ToArray();
-                }
-                else
-                {
-                    return base.VisitMarkupElement(element, tagNameUpper);
-                }
-            }
-
-            if (tagNameUpper == "B")
-            {
-                return new TextRun[]
-                    {
-                        new UnityTextModifier() { FontStyle = FontStyle.Bold }
                     }
-                    .Concat(base.VisitMarkupElement(element, tagNameUpper))
-                    .Concat(new TextRun[] { new TextEndOfSegment() })
-                    .ToArray();
-            }
 
-            return base.VisitMarkupElement(element, tagNameUpper);
+                    yield return new UnityTextModifier() { RubyColor = color, RubyFontScale = scale };
+                    foreach (var x in base.VisitMarkupElement(element, tagNameUpper)) yield return x;
+                    yield return TextEndOfSegment.Default;
+                    break;
+
+                case "COLOR":
+                    var value = element.GetAttribute("Value");
+                    if (!_colorTable.ContainsKey(value))
+                    {
+                        foreach (var x in base.VisitMarkupElement(element, tagNameUpper)) yield return x;
+                    }
+                    else
+                    {
+                        yield return new UnityTextModifier() { Color = this._colorTable[value] };
+                        foreach (var x in base.VisitMarkupElement(element, tagNameUpper)) yield return x;
+                        yield return TextEndOfSegment.Default;
+                    }
+                    break;
+
+                case "SIZE":
+                    var size = 0;
+                    if (Int32.TryParse(element.GetAttribute("Value"), out size))
+                    {
+                        yield return new UnityTextModifier() { FontSize = size };
+                        foreach (var x in base.VisitMarkupElement(element, tagNameUpper)) yield return x;
+                        yield return TextEndOfSegment.Default;
+                    }
+                    else
+                    {
+                        foreach (var x in base.VisitMarkupElement(element, tagNameUpper)) yield return x;
+                    }
+                    break;
+
+                case "B":
+                    yield return new UnityTextModifier() { FontStyle = FontStyle.Bold };
+                    foreach (var x in base.VisitMarkupElement(element, tagNameUpper)) yield return x;
+                    yield return TextEndOfSegment.Default;
+                    break;
+
+                default:
+                    foreach (var x in base.VisitMarkupElement(element, tagNameUpper)) yield return x;
+                    break;
+            }
         }
     }
 

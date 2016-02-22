@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 
 namespace LetterWriter
@@ -23,9 +24,9 @@ namespace LetterWriter
             this.RawCharacters = text;
         }
 
-        public override IGlyph[] GetCharacters(GlyphProvider glyphProvider, TextModifierScope textModifierScope)
+        public override void GetCharacters(GlyphProvider glyphProvider, TextModifierScope textModifierScope, IList<IGlyph> buffer)
         {
-            return glyphProvider.GetGlyphsFromString(textModifierScope, this.RawCharacters);
+            glyphProvider.GetGlyphsFromString(textModifierScope, this.RawCharacters, buffer);
         }
     }
 }

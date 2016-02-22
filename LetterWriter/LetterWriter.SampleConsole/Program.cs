@@ -188,9 +188,21 @@ namespace LetterWriter.SampleConsole
 
     class ConsoleGlyphProvider : GlyphProvider<ConsoleTextModifierScope>
     {
-        protected override IGlyph[] GetGlyphsFromStringCore(ConsoleTextModifierScope textModifierScope, string value)
+        private Dictionary<char, ConsoleGlyph> _cache = new Dictionary<char, ConsoleGlyph>(10 * 1024);
+        protected override void GetGlyphsFromStringCore(ConsoleTextModifierScope textModifierScope, string value, IList<IGlyph> buffer)
         {
-            return value.Select(x => new ConsoleGlyph(x) { Color = textModifierScope.Color ?? ((textModifierScope.IsBold ?? false) ? ConsoleColor.White : ConsoleColor.Gray) }).ToArray();
+            var color = textModifierScope.Color ?? ((textModifierScope.IsBold ?? false) ? ConsoleColor.White : ConsoleColor.Gray);
+            foreach (var x in value)
+            {
+                ConsoleGlyph glyph;
+                if (!this._cache.TryGetValue(x, out glyph) || glyph.Color != color)
+                {
+                    glyph = new ConsoleGlyph(x) { Color = color };
+                    this._cache[x] = glyph;
+                }
+
+                buffer.Add(glyph);
+            }
         }
     }
 

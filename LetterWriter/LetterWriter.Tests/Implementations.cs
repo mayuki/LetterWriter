@@ -46,9 +46,12 @@ namespace LetterWriter.Tests.Implementations
 
     public class ConsoleGlyphProvider : GlyphProvider<ConsoleTextModifierScope>
     {
-        protected override IGlyph[] GetGlyphsFromStringCore(ConsoleTextModifierScope textModifierScope, string value)
+        protected override void GetGlyphsFromStringCore(ConsoleTextModifierScope textModifierScope, string value, IList<IGlyph> buffer)
         {
-            return value.Select(x => new ConsoleGlyph(x) { Color = textModifierScope.Color ?? ((textModifierScope.IsBold ?? false) ? ConsoleColor.White : ConsoleColor.Gray) }).ToArray();
+            foreach (var x in value)
+            {
+                buffer.Add(new ConsoleGlyph(x) { Color = textModifierScope.Color ?? ((textModifierScope.IsBold ?? false) ? ConsoleColor.White : ConsoleColor.Gray) });
+            }
         }
     }
 

@@ -7,16 +7,16 @@ namespace LetterWriter
 {
     public abstract class GlyphProvider
     {
-        public abstract IGlyph[] GetGlyphsFromString(TextModifierScope textModifierScope, string value);
+        public abstract void GetGlyphsFromString(TextModifierScope textModifierScope, string value, IList<IGlyph> buffer);
     }
 
     public abstract class GlyphProvider<TTextModifierScope> : GlyphProvider where TTextModifierScope : TextModifierScope
     {
-        public override IGlyph[] GetGlyphsFromString(TextModifierScope textModifierScope, string value)
+        public override void GetGlyphsFromString(TextModifierScope textModifierScope, string value, IList<IGlyph> buffer)
         {
-            return this.GetGlyphsFromStringCore((TTextModifierScope)textModifierScope, value);
+            this.GetGlyphsFromStringCore((TTextModifierScope)textModifierScope, value, buffer);
         }
 
-        protected abstract IGlyph[] GetGlyphsFromStringCore(TTextModifierScope textModifierScope, string value);
+        protected abstract void GetGlyphsFromStringCore(TTextModifierScope textModifierScope, string value, IList<IGlyph> buffer);
     }
 }

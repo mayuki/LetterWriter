@@ -6,6 +6,10 @@ namespace LetterWriter
 {
     public abstract class TextFormatter
     {
+        private IList<IGlyph> _rubyTextRunGlyphs = new List<IGlyph>();
+        private IList<IGlyph> _rubyTextRunRubyGlyphs = new List<IGlyph>();
+        private IList<IGlyph> _textRunGlyphs = new List<IGlyph>();
+
         public LineBreakRule LineBreakRule { get; set; }
         public GlyphProvider GlyphProvider { get; set; }
 
@@ -84,17 +88,21 @@ namespace LetterWriter
                 if (ptr.Current is TextCharactersRubyGroup)
                 {
                     var rubyTextRun = (TextCharactersRubyGroup)ptr.Current;
-                    var rubyTextRunGlyphs = rubyTextRun.GetCharacters(this.GlyphProvider, state.TextModifierScope);
-                    var rubyTextRunRubyGlyphs = rubyTextRun.GetRubyCharacters(this.GlyphProvider, state.TextModifierScope);
+
+                    // 文字を取得する
+                    _rubyTextRunGlyphs.Clear();
+                    _rubyTextRunRubyGlyphs.Clear();
+                    rubyTextRun.GetCharacters(this.GlyphProvider, state.TextModifierScope, _rubyTextRunGlyphs);
+                    rubyTextRun.GetRubyCharacters(this.GlyphProvider, state.TextModifierScope, _rubyTextRunRubyGlyphs);
 
                     // 最初にサイズを計る
                     // 親文字列の幅
                     // TODO: spacing
-                    var textRunWidth = rubyTextRunGlyphs.Sum(x => x.AdvanceWidth + (spacing * x.AdvanceWidth));
-                    var textRunHeight = rubyTextRunGlyphs.Select(x => x.Height).DefaultIfEmpty().Max(); /* lineSpacing */
+                    var textRunWidth = _rubyTextRunGlyphs.Sum(x => x.AdvanceWidth + (spacing * x.AdvanceWidth));
+                    var textRunHeight = _rubyTextRunGlyphs.Select(x => x.Height).DefaultIfEmpty().Max(); /* lineSpacing */
                     // ルビ文字列の幅
                     // TODO: spacing
-                    var textRunRubyWidth = rubyTextRunRubyGlyphs.Sum(x => x.AdvanceWidth /* + rubySpacing */);
+                    var textRunRubyWidth = _rubyTextRunRubyGlyphs.Sum(x => x.AdvanceWidth /* + rubySpacing */);
 
                     // 入りきらなくて行頭ではない場合には次の行に送る(ルビグループの途中で改行できない)
                     if (width != 0 && paragraphWidth < width + Math.Max(textRunWidth, textRunRubyWidth))
@@ -108,24 +116,24 @@ namespace LetterWriter
                         // 親文字列のほうが長い
                         // ルビを1-2-1ルールで並べる
                         var spaces = textRunWidth - textRunRubyWidth;
-                        rubySpace = spaces / (rubyTextRunRubyGlyphs.Length * 2.0f);
+                        rubySpace = spaces / (_rubyTextRunRubyGlyphs.Count * 2.0f);
                     }
                     else
                     {
                         // ルビの文字列のほうが長い
                         // 親文字列を1-2-1ルールで並べる
                         var spaces = textRunRubyWidth - textRunWidth;
-                        rubyParantSpace = spaces / (rubyTextRunGlyphs.Length * 2.0f);
+                        rubyParantSpace = spaces / (_rubyTextRunGlyphs.Count * 2.0f);
                     }
 
                     // 親文字列を置く前にルビ文字を置いてしまう
                     var rubyWidth = width; // 開始位置は親文字を基準にする
                     var rubyIndex = 0f;
-                    var rubyIndexStep = rubyTextRunGlyphs.Length / (float)rubyTextRunRubyGlyphs.Length;
+                    var rubyIndexStep = _rubyTextRunGlyphs.Count / (float)_rubyTextRunRubyGlyphs.Count;
                     var rubyIndexInTextRun = 0;
-                    foreach (var glyph in rubyTextRunRubyGlyphs)
+                    foreach (var glyph in _rubyTextRunRubyGlyphs)
                     {
-                        glyphs.Add(this.CreateGlyphPlacement(state.TextModifierScope, glyph, (int)(rubyWidth + rubySpace), -textRunHeight, ptr.GlyphIndex + (int)Math.Ceiling(rubyIndex += rubyIndexStep) - 1, rubyIndexInTextRun++, rubyTextRunRubyGlyphs.Length));
+                        glyphs.Add(this.CreateGlyphPlacement(state.TextModifierScope, glyph, (int)(rubyWidth + rubySpace), -textRunHeight, ptr.GlyphIndex + (int)Math.Ceiling(rubyIndex += rubyIndexStep) - 1, rubyIndexInTextRun++, _rubyTextRunRubyGlyphs.Count));
 
                         // TODO: spacing
                         rubyWidth = rubyWidth + glyph.AdvanceWidth + (int)(rubySpace * 2) /* + spacing */;
@@ -138,7 +146,9 @@ namespace LetterWriter
                 }
 
                 // 一文字ずつ置いていく
-                var textRunGlyphs = ptr.Current.GetCharacters(this.GlyphProvider, state.TextModifierScope);
+                _textRunGlyphs.Clear();
+                ptr.Current.GetCharacters(this.GlyphProvider, state.TextModifierScope, _textRunGlyphs);
+
                 var indexInTextRun = 0;
                 var isSpecialCaseCanWrap = false; // テキストの改行禁止の途中で折り返しを許可する特殊なフラグ
                 var initialWidth = width;
@@ -148,10 +158,10 @@ namespace LetterWriter
                     if (ptr.Next())
                         break;
 
-                    if (textRunGlyphs.Length == 0)
+                    if (_textRunGlyphs.Count == 0)
                         break;
 
-                    var glyph = textRunGlyphs[ptr.Position];
+                    var glyph = _textRunGlyphs[ptr.Position];
                     var nextWidth = width + glyph.AdvanceWidth + (int)(rubyParantSpace * 2) + (int)(spacing * glyph.AdvanceWidth); // TODO: spacing
 
                     // 行頭で空白文字はスキップする
@@ -248,7 +258,7 @@ namespace LetterWriter
                         goto BREAK_TEXTLINE;
                     }
 
-                    glyphs.Add(this.CreateGlyphPlacement(state.TextModifierScope, glyph, (int)(width + rubyParantSpace), 0, ptr.GlyphIndex++, indexInTextRun++, textRunGlyphs.Length));
+                    glyphs.Add(this.CreateGlyphPlacement(state.TextModifierScope, glyph, (int)(width + rubyParantSpace), 0, ptr.GlyphIndex++, indexInTextRun++, _textRunGlyphs.Count));
 
                     width = nextWidth;
                 }
@@ -319,15 +329,33 @@ namespace LetterWriter
             state.GlyphLastIndex = ptr.GlyphIndex;
             return new TextLine()
             {
-                PlacedGlyphs = glyphs.Where(x => !x.Equals(GlyphPlacement.Empty)).ToArray(),
+                PlacedGlyphs = glyphs.Where(x => x != GlyphPlacement.Empty).ToArray(),
             };
         }
 
         private struct TextRunPointer
         {
-            public int GlyphIndex { get; set; }
-            public int Position { get; set; }
-            public int TextRunIndex { get; set; }
+            private int _position;
+            private int _glyphIndex;
+            private int _textRunIndex;
+
+            public int GlyphIndex
+            {
+                get { return this._glyphIndex; }
+                set { this._glyphIndex = value; }
+            }
+
+            public int Position
+            {
+                get { return this._position; }
+                set { this._position = value; }
+            }
+
+            public int TextRunIndex
+            {
+                get { return this._textRunIndex; }
+                set { this._textRunIndex = value; }
+            }
 
             public TextSource TextSource { get; set; }
 
@@ -337,15 +365,15 @@ namespace LetterWriter
             {
                 get
                 {
-                    return (this.Position == -1)
-                        ? this.TextSource.TextRuns[this.TextRunIndex - 1]
-                        : this.TextSource.TextRuns[this.TextRunIndex];
+                    return (this._position == -1)
+                        ? this.TextSource.TextRuns[this._textRunIndex - 1]
+                        : this.TextSource.TextRuns[this._textRunIndex];
                 }
             }
 
             public bool CanRead
             {
-                get { return !this.EndOfSource && (this.Position < this.Current.Length); }
+                get { return !this.EndOfSource && (this._position < this.Current.Length); }
             }
 
             public bool EndOfSource
@@ -360,35 +388,35 @@ namespace LetterWriter
 
             private void UpdateCurrent()
             {
-                if (this.TextRunIndex > this.TextSource.TextRuns.Length - 1)
+                if (this._textRunIndex > this.TextSource.TextRuns.Length - 1)
                 {
                     this.Current = null;
                 }
                 else
                 {
-                    this.Current = this.TextSource.TextRuns[this.TextRunIndex]; // TextRunIndex は最初0から始まってNext呼べるように1オリジン
+                    this.Current = this.TextSource.TextRuns[this._textRunIndex]; // TextRunIndex は最初0から始まってNext呼べるように1オリジン
                 }
             }
 
             public void BackRun()
             {
-                this.TextRunIndex--;
+                this._textRunIndex--;
                 this.UpdateCurrent();
-                this.Position = this.Current.Length - 1;
+                this._position = this.Current.Length - 1;
             }
 
             public void NextRun()
             {
-                this.TextRunIndex++;
+                this._textRunIndex++;
                 this.UpdateCurrent();
-                this.Position = -1;
+                this._position = -1;
             }
 
             public bool Back()
             {
-                this.Position--;
+                this._position--;
 
-                if (this.Position < -1)
+                if (this._position < -1)
                 {
                     this.BackRun();
                     return true;
@@ -401,9 +429,9 @@ namespace LetterWriter
             {
                 if (this.EndOfSource) throw new InvalidOperationException();
 
-                this.Position++;
+                this._position++;
 
-                if (this.Position > this.Current.Length - 1)
+                if (this._position > this.Current.Length - 1)
                 {
                     this.NextRun();
                     return true;

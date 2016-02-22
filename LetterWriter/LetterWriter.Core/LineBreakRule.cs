@@ -11,12 +11,28 @@ namespace LetterWriter
 
         public virtual bool IsLineBreakRuleNotAllowedAtBeginOfLine(IGlyph g)
         {
-            return (g is Glyph) && LineBreakRuleNotAllowedAtBeginOfLine.Contains(((Glyph)g).Character);
+            var glyph = g as Glyph;
+            if (g != null)
+            {
+                for (var i = 0; i < this.LineBreakRuleNotAllowedAtBeginOfLine.Length; i++)
+                {
+                    if (this.LineBreakRuleNotAllowedAtBeginOfLine[i] == glyph.Character) return true;
+                }
+            }
+            return false;
         }
 
         public virtual bool IsLineBreakRuleNotAllowedAtEndOfLine(IGlyph g)
         {
-            return (g is Glyph) && LineBreakRuleNotAllowedAtEndOfLine.Contains(((Glyph)g).Character);
+            var glyph = g as Glyph;
+            if (g != null)
+            {
+                for (var i = 0; i < this.LineBreakRuleNotAllowedAtEndOfLine.Length; i++)
+                {
+                    if (this.LineBreakRuleNotAllowedAtEndOfLine[i] == glyph.Character) return true;
+                }
+            }
+            return false;
         }
 
         public virtual bool CanWrap(IGlyph g)

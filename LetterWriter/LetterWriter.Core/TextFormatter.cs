@@ -4,11 +4,16 @@ using System.Linq;
 
 namespace LetterWriter
 {
+    /// <summary>
+    /// テキストのソースを読み込んで、行の形に整形する処理を扱うクラスです。
+    /// </summary>
     public abstract class TextFormatter
     {
+        // 一時的なリストが繰り返し生成されるので再利用する
         private IList<IGlyph> _rubyTextRunGlyphs = new List<IGlyph>();
         private IList<IGlyph> _rubyTextRunRubyGlyphs = new List<IGlyph>();
         private IList<IGlyph> _textRunGlyphs = new List<IGlyph>();
+        private List<GlyphPlacement> _glyphPlacements = new List<GlyphPlacement>();
 
         public LineBreakRule LineBreakRule { get; set; }
         public GlyphProvider GlyphProvider { get; set; }
@@ -32,6 +37,13 @@ namespace LetterWriter
             return new GlyphPlacement(glyph, x, y, index);
         }
 
+        /// <summary>
+        /// テキストソースを読み込んで、指定した行の幅で一行を取り出します。
+        /// </summary>
+        /// <param name="textSource"></param>
+        /// <param name="paragraphWidth"></param>
+        /// <param name="state"></param>
+        /// <returns></returns>
         public TextLine FormatLine(TextSource textSource, int paragraphWidth, TextLineBreakState state)
         {
             // TextModifierScopeが未作成
@@ -56,9 +68,10 @@ namespace LetterWriter
             }
 
             var width = 0;
-            var glyphs = new List<GlyphPlacement>();
-            var stackedModifierScopes = new Stack<TextModifierScope>(); // TextEndOfSegmentでTextModifierScopeが終わったときに積んでおく(禁則で逆方向に戻ることがあるから)
+            var glyphs = this._glyphPlacements;
+            glyphs.Clear(); // 再利用しているのでクリアする
 
+            var stackedModifierScopes = new Stack<TextModifierScope>(); // TextEndOfSegmentでTextModifierScopeが終わったときに積んでおく(禁則で逆方向に戻ることがあるから)
             var spacing = state.TextModifierScope.Spacing ?? 0;
             // 1-2-1 の 1
             var rubySpace = 0f;

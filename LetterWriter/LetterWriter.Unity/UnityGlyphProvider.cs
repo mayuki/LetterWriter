@@ -10,11 +10,14 @@ namespace LetterWriter.Unity
     public class UnityGlyphProvider : GlyphProvider<UnityTextModifierScope>
     {
         private Dictionary<char, UnityGlyph> _recentGlyphCache = new Dictionary<char, UnityGlyph>();
+        private TextGenerator _cachedTextGenerator;
+
         public Font Font { get; set; }
 
         public UnityGlyphProvider(Font font)
         {
             this.Font = font;
+            this._cachedTextGenerator = new TextGenerator();
         }
 
         protected override void GetGlyphsFromStringCore(UnityTextModifierScope textModifierScope, string value, IList<IGlyph> buffer)
@@ -23,8 +26,7 @@ namespace LetterWriter.Unity
             var fontStyle = textModifierScope.FontStyle ?? FontStyle.Normal;
             var color = textModifierScope.Color;
 
-            var textGenerator = new TextGenerator();
-            if (!textGenerator.Populate(value + "…M", new TextGenerationSettings() { font = this.Font, fontSize = fontSize, fontStyle = fontStyle }))
+            if (!this._cachedTextGenerator.Populate(value + "…M", new TextGenerationSettings() { font = this.Font, fontSize = fontSize, fontStyle = fontStyle }))
             {
                 throw new Exception("TextGenerator.Populate failed");
             }
@@ -45,7 +47,8 @@ namespace LetterWriter.Unity
                 UnityGlyph glyph;
                 if (this._recentGlyphCache.TryGetValue(c, out glyph))
                 {
-                    if (glyph.Color != color ||
+                    if ((glyph.Color.HasValue != color.HasValue) ||
+                        (glyph.Color.HasValue && color.HasValue && ((Vector4)color.Value != (Vector4)color.Value)) ||
                         glyph.Height != fontSize ||
                         glyph.AdvanceWidth != characterInfo.advance)
                     {

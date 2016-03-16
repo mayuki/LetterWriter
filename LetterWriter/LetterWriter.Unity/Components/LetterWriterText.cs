@@ -18,6 +18,7 @@ namespace LetterWriter.Unity.Components
         private TextLine[] _formattedTextLines;
         private TextSource _textSource;
         private string _prevText; // TODO: 変更チェックが雑なのであとで直す
+        private List<TextLine> _textLinesReusableBuffer = new List<TextLine>();
 
         private LetterWriterMarkupParser _markupParser;
         private TextFormatter _cachedTextFormatter;
@@ -270,6 +271,20 @@ namespace LetterWriter.Unity.Components
         {
             this._formattedTextLines = this.FormatText((this.HorizontalOverflow == HorizontalWrapMode.Wrap) ? this.rectTransform.rect.width : 99999f);
             this._requireReformatText = false;
+
+            // 最大のインデックスを保存する
+            this._maxIndex = 0;
+            for (var i = 0; i < this._formattedTextLines.Length; i++)
+            {
+                var textLine = this._formattedTextLines[i];
+                for (var j = 0; j < textLine.PlacedGlyphs.Length; j++)
+                {
+                    if (this._maxIndex < textLine.PlacedGlyphs[j].Index)
+                    {
+                        this._maxIndex = textLine.PlacedGlyphs[j].Index;
+                    }
+                }
+            }
         }
 
         /// <summary>
@@ -288,20 +303,17 @@ namespace LetterWriter.Unity.Components
                 this._markAsRebuildTextFormatter = false;
             }
 
-            var textLines = new List<TextLine>();
+            this._textLinesReusableBuffer.Clear();
             while (true)
             {
                 var textLine = this._cachedTextFormatter.FormatLine(this._textSource, (int)width, textLineBreakState);
                 if (textLine == null)
                     break;
 
-                textLines.Add(textLine);
+                this._textLinesReusableBuffer.Add(textLine);
             }
 
-            var textLinesArray = textLines.ToArray();
-            this._maxIndex = textLinesArray.SelectMany(x => x.PlacedGlyphs.Select(y => y.Index)).DefaultIfEmpty().Max();
-
-            return textLinesArray;
+            return this._textLinesReusableBuffer.ToArray();
         }
 
         /// <summary>

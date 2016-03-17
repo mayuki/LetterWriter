@@ -59,6 +59,8 @@ namespace LetterWriter
             // 1-2-1 の 1
             var rubySpace = 0f;
             var rubyParantSpace = 0f;
+            var isOverflow = false; // 突き抜けてしまっているかどうか (WordWrapしない場合には突き抜ける)
+            var hasWrapPoint = false; // 折り返し可能な場所があるかどうか
 
             while (!ptr.EndOfSource)
             {
@@ -140,16 +142,14 @@ namespace LetterWriter
                 // 一文字ずつ置いていく
                 var textRunGlyphs = ptr.Current.GetCharacters(this.GlyphProvider, state.TextModifierScope);
                 var indexInTextRun = 0;
-                var isSpecialCaseCanWrap = false; // テキストの改行禁止の途中で折り返しを許可する特殊なフラグ
                 var initialWidth = width;
 
                 while (true)
                 {
-                    if (ptr.Next())
+                    if (ptr.Next() || (textRunGlyphs.Length == 0))
+                    {
                         break;
-
-                    if (textRunGlyphs.Length == 0)
-                        break;
+                    }
 
                     var glyph = textRunGlyphs[ptr.Position];
                     var nextWidth = width + glyph.AdvanceWidth + (int)(rubyParantSpace * 2) + (int)(spacing * glyph.AdvanceWidth); // TODO: spacing
@@ -163,105 +163,107 @@ namespace LetterWriter
 
                     // 行に入りきらない場合で折り返し許可
                     // 1文字以上あるときに限る(1文字も入らないと無限に空っぽになる)
-                    // どうしても入りきらなくて(一度全部追い出してしまった)、英単語の途中の場合にはWordWrapBreakwordの状態をみてtrueなら英単語をぶった切り、そうでない場合には突き抜けるのを許可する
                     if (nextWidth > paragraphWidth &&
                         ptr.Current.CanWrap &&
-                        glyphs.Count > 0 &&
-                        (isSpecialCaseCanWrap ? (!this.LineBreakRule.IsInWord(glyph) || this.LineBreakRule.IsWordWrapBreakword) : true))
+                        glyphs.Count > 0)
                     {
-                        // 一文字戻す
-                        // この時点ではまだGlyphsに入れていないので巻き戻すときに削る必要はない
-                        var nextGlyphBeginOfLine = glyph;
-                        if (ptr.Back())
+                        // WordWrapでBreakWord(単語分割)が有効か単語中ではない場合は追い出す
+                        if (this.LineBreakRule.IsWordWrapBreakword || !this.LineBreakRule.IsInWord(glyph))
                         {
-                            // 巻き戻してTextModifierが出てきたときはScopeも戻す
-                            if (ptr.Current is TextModifier)
+                            // 一文字戻す
+                            // この時点ではまだGlyphsに入れていないので巻き戻すときに削る必要はない
+                            var nextGlyphBeginOfLine = glyph;
+
+                            if (ptr.Back())
                             {
-                                state.TextModifierScope = state.TextModifierScope.Parent;
+                                // 巻き戻してTextModifierが出てきたときはScopeも戻す
+                                if (ptr.Current is TextModifier)
+                                {
+                                    state.TextModifierScope = state.TextModifierScope.Parent;
+                                }
+                                // 巻き戻してTextEndOfSegmentが出てきたときはScopeの状態を戻す
+                                if (ptr.Current is TextEndOfSegment)
+                                {
+                                    state.TextModifierScope = stackedModifierScopes.Pop();
+                                }
                             }
-                            // 巻き戻してTextEndOfSegmentが出てきたときはScopeの状態を戻す
-                            if (ptr.Current is TextEndOfSegment)
+                            else
                             {
-                                state.TextModifierScope = stackedModifierScopes.Pop();
+                                // 前の文字
+
+                                // 次の行の開始となる文字(=現在 glyph に入ってるもの)が禁則文字の場合にはさらに巻き戻して前の文字を追い出す必要がある
+                                // ただし1文字以上は含まれていてほしいので2文字以上のときだけ。
+                                while
+                                (
+                                    // 次の文字が改行不可能な文字(行頭に来たらNG)
+                                    !this.LineBreakRule.CanWrap(nextGlyphBeginOfLine) &&
+                                    // 現在のTextRunが改行可能
+                                    ptr.Current.CanWrap &&
+                                    // 文字がすでに2文字以上おかれているかどうか
+                                    glyphs.Count > 1
+                                
+                                )
+                                {
+                                    // 前の文字 or TextRunに
+                                    if (ptr.Back())
+                                    {
+                                        // 巻き戻してTextModifierが出てきたときはScopeも戻す
+                                        if (ptr.Current is TextModifier)
+                                        {
+                                            state.TextModifierScope = state.TextModifierScope.Parent;
+                                        }
+                                        // 巻き戻してTextEndOfSegmentが出てきたときはScopeの状態を戻す
+                                        if (ptr.Current is TextEndOfSegment)
+                                        {
+                                            state.TextModifierScope = stackedModifierScopes.Pop();
+                                        }
+
+                                        // ルビグループは途中改行できないのでルビグループごと次の行へ送る
+                                        // ただし行の始まりがこのルビグループだったらあきらめる
+                                        if (!ptr.Current.CanWrap)
+                                        {
+                                            var len = ptr.Current.TotalGlyphCount;
+                                            if (glyphs.Count - len > 0)
+                                            {
+                                                // TextRunの分丸ごと消す
+                                                glyphs.RemoveRange((glyphs.Count - len), len);
+                                                nextGlyphBeginOfLine = glyphs.Last().Glyph;
+
+                                                // 前のTextRunの最後を指すようにする
+                                                ptr.BackRun();
+                                                continue;
+                                            }
+                                            else
+                                            {
+                                                // 1文字も残らない(=TextRunが開始地点)ので消せないで終わる
+                                                // 戻さなかったことにして次の行から始まるようにする
+                                                ptr.NextRun();
+                                                goto BREAK_TEXTLINE;
+                                            }
+                                        }
+                                    }
+                                    else
+                                    {
+                                        var lastPlacedGlyph = glyphs.Last();
+                                        glyphs.Remove(lastPlacedGlyph);
+
+                                        nextGlyphBeginOfLine = lastPlacedGlyph.Glyph;
+                                    }
+                                }
                             }
+
+                            goto BREAK_TEXTLINE;
                         }
                         else
                         {
-                            // 前の文字
-
-                            // 次の行の開始となる文字(=現在 glyph に入ってるもの)が禁則文字の場合にはさらに巻き戻して前の文字を追い出す必要がある
-                            // ただし1文字以上は含まれていてほしいので2文字以上のときだけ。
-                            while
-                            (
-                                // 次の文字が改行不可能な文字(行頭に来たらNG)
-                                (
-                                    !this.LineBreakRule.CanWrap(nextGlyphBeginOfLine) ||
-                                    (this.LineBreakRule.IsInWord(nextGlyphBeginOfLine) && !this.LineBreakRule.IsWordWrapBreakword)
-                                ) &&
-                                // 現在のTextRunが改行可能
-                                ptr.Current.CanWrap &&
-                                // 文字がすでに2文字以上おかれているかどうか
-                                glyphs.Count > 0
-                                
-                            )
-                            {
-                                // 前の文字 or TextRunに
-                                if (ptr.Back())
-                                {
-                                    // 巻き戻してTextModifierが出てきたときはScopeも戻す
-                                    if (ptr.Current is TextModifier)
-                                    {
-                                        state.TextModifierScope = state.TextModifierScope.Parent;
-                                    }
-                                    // 巻き戻してTextEndOfSegmentが出てきたときはScopeの状態を戻す
-                                    if (ptr.Current is TextEndOfSegment)
-                                    {
-                                        state.TextModifierScope = stackedModifierScopes.Pop();
-                                    }
-
-                                    // ルビグループは途中改行できないのでルビグループごと次の行へ送る
-                                    // ただし行の始まりがこのルビグループだったらあきらめる
-                                    if (!ptr.Current.CanWrap)
-                                    {
-                                        var len = ptr.Current.TotalGlyphCount;
-                                        if (glyphs.Count - len > 0)
-                                        {
-                                            // TextRunの分丸ごと消す
-                                            glyphs.RemoveRange((glyphs.Count - len), len);
-                                            nextGlyphBeginOfLine = glyphs.Last().Glyph;
-
-                                            // 前のTextRunの最後を指すようにする
-                                            ptr.BackRun();
-                                            continue;
-                                        }
-                                        else
-                                        {
-                                            // 1文字も残らない(=TextRunが開始地点)ので消せないで終わる
-                                            // 戻さなかったことにして次の行から始まるようにする
-                                            ptr.NextRun();
-                                            goto BREAK_TEXTLINE;
-                                        }
-                                    }
-                                }
-                                else
-                                {
-                                    var lastPlacedGlyph = glyphs.Last();
-                                    glyphs.Remove(lastPlacedGlyph);
-
-                                    nextGlyphBeginOfLine = lastPlacedGlyph.Glyph;
-                                }
-                            }
-
-                            // 全部追い出されてしまった場合には途中での改行を特別に許可してやり直し
-                            if (glyphs.Count == 0)
-                            {
-                                isSpecialCaseCanWrap = true;
-                                width = initialWidth;
-                                continue;
-                            }
+                            // 突き抜けてる
+                            isOverflow = true;
                         }
-
-                        goto BREAK_TEXTLINE;
+                    }
+                    else
+                    {
+                        // 普通に文字を置いていく途中で折り返しができるかマークを残す
+                        hasWrapPoint |= !this.LineBreakRule.IsInWord(glyph);
                     }
 
                     glyphs.Add(this.CreateGlyphPlacement(state.TextModifierScope, glyph, (int)(width + rubyParantSpace), 0, ptr.GlyphIndex++, indexInTextRun++, textRunGlyphs.Length));
@@ -283,9 +285,29 @@ namespace LetterWriter
                 {
                     var glyphPlacement = glyphs.Last();
 
-                    if (!this.LineBreakRule.IsLineBreakRuleNotAllowedAtEndOfLine(glyphPlacement.Glyph) ||
-                        !ptr.Previous.CanWrap ||
-                        glyphs.Count < 2)
+                    // 単語的に折り返しができる位置なのかどうか
+                    var noWrap = (!this.LineBreakRule.IsWordWrapBreakword && this.LineBreakRule.IsInWord(glyphPlacement.Glyph));
+
+                    // もしあふれていて、かつ折り返せるポイントがない場合にはそのまま出力
+                    if (isOverflow && !hasWrapPoint)
+                    {
+                        break;
+                    }
+
+                    // 1文字になったら終わり
+                    if (glyphs.Count < 2)
+                    {
+                        break;
+                    }
+
+                    // 前のTextRunが折り返せないなら終わり
+                    if (!ptr.Previous.CanWrap)
+                    {
+                        break;
+                    }
+
+                    // 行末禁則 or 折り返しかつ突き抜けの状態ではない
+                    if (!this.LineBreakRule.IsLineBreakRuleNotAllowedAtEndOfLine(glyphPlacement.Glyph) && !(noWrap && isOverflow))
                     {
                         break;
                     }

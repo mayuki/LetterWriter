@@ -31,7 +31,7 @@ namespace LetterWriter.SampleConsole
             //text = "あいうえ<ruby value='び'>美</ruby>」";
             //text = "<ruby color='white' value='Nanodesu'>なのです</ruby>";
             //text = "<ruby value=\"B\">A</ruby>》";
-            text = "hogemogeaaabc<ruby aa>hoge</ruby>";
+            //text = "hogemogeaaabc<ruby aa>hoge</ruby>";
             var textSource = markupParser.Parse(text);
 
             var textSourceBuilder = new TextSourceBuilder();

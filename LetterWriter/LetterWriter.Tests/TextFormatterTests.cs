@@ -118,17 +118,29 @@ maumau
         [TestMethod]
         public void Alphabet_WordWrap_NoBreakword_04()
         {
-            var textSource = this._markupParser.Parse("Hauhauはmaumau");
+            var textSource = this._markupParser.Parse("Hauhauとはmaumau");
             this._formatter.LineBreakRule.IsWordWrapBreakword = false; // 強制折り返しを許可しない
             var textLines = this.FormatText(textSource, 6);
 
             ValidateTextWithoutRuby(textLines, @"
 Hauhau
-は
+とは
 maumau
 ");
         }
+        [TestMethod]
+        public void Alphabet_WordWrap_NoBreakword_05()
+        {
+            var textSource = this._markupParser.Parse("Hauhauとmaumau");
+            this._formatter.LineBreakRule.IsWordWrapBreakword = false; // 強制折り返しを許可しない
+            var textLines = this.FormatText(textSource, 6);
 
+            ValidateTextWithoutRuby(textLines, @"
+Hauhau
+と
+maumau
+");
+        }
         [TestMethod]
         public void Alphabet_WordWrap_Breakword_01()
         {

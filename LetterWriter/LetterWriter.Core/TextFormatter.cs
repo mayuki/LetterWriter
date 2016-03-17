@@ -163,7 +163,11 @@ namespace LetterWriter
 
                     // 行に入りきらない場合で折り返し許可
                     // 1文字以上あるときに限る(1文字も入らないと無限に空っぽになる)
-                    if (nextWidth > paragraphWidth && ptr.Current.CanWrap && glyphs.Count > 0)
+                    // どうしても入りきらなくて(一度全部追い出してしまった)、英単語の途中の場合にはWordWrapBreakwordの状態をみてtrueなら英単語をぶった切り、そうでない場合には突き抜けるのを許可する
+                    if (nextWidth > paragraphWidth &&
+                        ptr.Current.CanWrap &&
+                        glyphs.Count > 0 &&
+                        (isSpecialCaseCanWrap ? (!this.LineBreakRule.IsInWord(glyph) || this.LineBreakRule.IsWordWrapBreakword) : true))
                     {
                         // 一文字戻す
                         // この時点ではまだGlyphsに入れていないので巻き戻すときに削る必要はない
@@ -187,7 +191,19 @@ namespace LetterWriter
 
                             // 次の行の開始となる文字(=現在 glyph に入ってるもの)が禁則文字の場合にはさらに巻き戻して前の文字を追い出す必要がある
                             // ただし1文字以上は含まれていてほしいので2文字以上のときだけ。
-                            while (!(isSpecialCaseCanWrap || this.LineBreakRule.CanWrap(nextGlyphBeginOfLine)) && ptr.Current.CanWrap && glyphs.Count > 0)
+                            while
+                            (
+                                // 次の文字が改行不可能な文字(行頭に来たらNG)
+                                (
+                                    !this.LineBreakRule.CanWrap(nextGlyphBeginOfLine) ||
+                                    (this.LineBreakRule.IsInWord(nextGlyphBeginOfLine) && !this.LineBreakRule.IsWordWrapBreakword)
+                                ) &&
+                                // 現在のTextRunが改行可能
+                                ptr.Current.CanWrap &&
+                                // 文字がすでに2文字以上おかれているかどうか
+                                glyphs.Count > 0
+                                
+                            )
                             {
                                 // 前の文字 or TextRunに
                                 if (ptr.Back())

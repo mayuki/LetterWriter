@@ -7,10 +7,11 @@ using UnityEngine.UI;
 using LetterWriter;
 using LetterWriter.Markup;
 using LetterWriter.Unity.Markup;
+using UnityEngine.EventSystems;
 
 namespace LetterWriter.Unity.Components
 {
-    public class LetterWriterText : MaskableGraphic, ILayoutElement
+    public class LetterWriterText : MaskableGraphic, ILayoutElement, IPointerClickHandler
     {
         private bool _markAsRebuildTextFormatter = true;
         private bool _requireReformatText = true;
@@ -198,6 +199,9 @@ namespace LetterWriter.Unity.Components
             Font.textureRebuilt += OnFontTextureRebuilt;
 
             this._cachedRectTransform = null;
+            this._markupParser = null;
+
+            this.RefreshTextSourceIfNeeded();
         }
 
         protected override void OnDisable()
@@ -206,6 +210,7 @@ namespace LetterWriter.Unity.Components
 
             Font.textureRebuilt -= OnFontTextureRebuilt;
             this._cachedRectTransform = null;
+            this._markupParser = null;
         }
 
         protected virtual void OnFontTextureRebuilt(Font font)
@@ -330,6 +335,8 @@ namespace LetterWriter.Unity.Components
             return new UnityTextFormatter(this.Font, this.FontSize, this.color);
         }
 
+        private List<ClickableMap> _clickableMaps;
+
 #if UNITY_5_2
         protected override void OnPopulateMesh(Mesh m)
         {
@@ -358,6 +365,8 @@ namespace LetterWriter.Unity.Components
             y += (leadingBase * this.FontSize); // 一行目の分、少し上に上げておく
 
             vertexHelper.Clear();
+
+            this._clickableMaps = new List<ClickableMap>();
 
             foreach (var textLine in this._formattedTextLines)
             {
@@ -391,9 +400,12 @@ namespace LetterWriter.Unity.Components
                 }
 
                 // ここも foreach + Where とかじゃなくて展開するっぽい
+                ClickableMap clickableMap = null;
                 for (var i = 0; i < textLine.PlacedGlyphs.Length; i++)
                 {
                     var placedGlyph = textLine.PlacedGlyphs[i];
+                    var href = (placedGlyph is Assets.Scripts.Features.LetterWriter.MyGlyphPlacement ? ((Assets.Scripts.Features.LetterWriter.MyGlyphPlacement)placedGlyph).Href : null);
+
                     if (placedGlyph != GlyphPlacement.Empty &&
                         (this._visibleLength == -1 || placedGlyph.Index < this._visibleLength))
                     {
@@ -413,7 +425,48 @@ namespace LetterWriter.Unity.Components
                         uiVertexes[3].position.y += -placedGlyph.Y + y - lineHeight;
 
                         vertexHelper.AddUIVertexQuad(uiVertexes);
+
+                        if (clickableMap != null)
+                        {
+                            if (clickableMap.Href != href)
+                            {
+                                this._clickableMaps.Add(clickableMap);
+                                clickableMap = null;
+                            }
+                            else
+                            {
+                                if (clickableMap.Top > uiVertexes[0].position.y)
+                                {
+                                    clickableMap.Top = uiVertexes[0].position.y;
+                                }
+                                if (clickableMap.Bottom < uiVertexes[3].position.y)
+                                {
+                                    clickableMap.Bottom = uiVertexes[3].position.y;
+                                }
+
+                                clickableMap.Right = uiVertexes[2].position.x;
+                            }
+                        }
+                        if (clickableMap == null)
+                        {
+                            clickableMap = (href == null)
+                                ? null
+                                : new ClickableMap()
+                                {
+                                    Href = href,
+                                    Left = uiVertexes[0].position.x,
+                                    Top = uiVertexes[0].position.y,
+                                    Right = uiVertexes[2].position.x,
+                                    Bottom = uiVertexes[3].position.y,
+                                };
+                        }
                     }
+                }
+
+                if (clickableMap != null)
+                {
+                    this._clickableMaps.Add(clickableMap);
+                    Debug.Log(String.Format("{0},{1} - {2},{3}: {4}", clickableMap.Left, clickableMap.Top, clickableMap.Right, clickableMap.Bottom, clickableMap.Href));
                 }
 
                 // 1行分下に進めて、さらにLineHeight-1の半分の空きを足す
@@ -570,6 +623,23 @@ namespace LetterWriter.Unity.Components
 
 #endregion
 
+        void IPointerClickHandler.OnPointerClick(PointerEventData eventData)
+        {
+            Vector2 localPoint;
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(this._cachedRectTransform, eventData.pressPosition, eventData.pressEventCamera, out localPoint);
+            //Debug.Log(localPoint);
+
+            foreach (var map in this._clickableMaps)
+            {
+                var bounds = new Bounds() { min = new Vector2(map.Left, map.Top), max = new Vector2(map.Right, map.Bottom) };
+                if (bounds.Contains(localPoint))
+                {
+                    Debug.Log(map.Href);
+                    Application.OpenURL(map.Href);
+                }
+            }
+        }
+
         /// <summary>
         /// 指定した高さに文章が収まる最小の幅を算出します。
         /// </summary>
@@ -625,5 +695,14 @@ namespace LetterWriter.Unity.Components
 
             return height;
         }
+    }
+
+    class ClickableMap
+    {
+        public string Href { get; set; }
+        public float Top { get; set; }
+        public float Left { get; set; }
+        public float Bottom { get; set; }
+        public float Right { get; set; }
     }
 }

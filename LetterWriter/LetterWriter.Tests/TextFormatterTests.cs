@@ -16,6 +16,13 @@ namespace LetterWriter.Tests
         private TextFormatter _formatter = new ConsoleTextFormatter();
         private LetterWriterMarkupParser _markupParser = new ConsoleMarkupParser();
 
+        [TestInitialize]
+        public void Setup()
+        {
+            this._formatter = new ConsoleTextFormatter();
+            this._markupParser = new ConsoleMarkupParser();
+        }
+
         [TestMethod]
         public void Empty()
         {
@@ -67,8 +74,97 @@ maumau
 
             ValidateTextWithoutRuby(textLines, @"
 Hauhau
-1
+1 maum
+au
+");
+        }
+
+        [TestMethod]
+        public void Alphabet_WordWrap_NoBreakword_01()
+        {
+            var textSource = this._markupParser.Parse("Hauhaumaumau");
+            this._formatter.LineBreakRule.IsWordWrapBreakword = false; // 強制折り返しを許可しない
+            var textLines = this.FormatText(textSource, 6);
+
+            ValidateTextWithoutRuby(textLines, @"
+Hauhaumaumau
+");
+        }
+        [TestMethod]
+        public void Alphabet_WordWrap_NoBreakword_02()
+        {
+            var textSource = this._markupParser.Parse("Hauhaumaumau gaogaogaogao");
+            this._formatter.LineBreakRule.IsWordWrapBreakword = false; // 強制折り返しを許可しない
+            var textLines = this.FormatText(textSource, 6);
+
+            ValidateTextWithoutRuby(textLines, @"
+Hauhaumaumau
+gaogaogaogao
+");
+        }
+
+        [TestMethod]
+        public void Alphabet_WordWrap_NoBreakword_03()
+        {
+            var textSource = this._markupParser.Parse("Hauhau1 maumau");
+            this._formatter.LineBreakRule.IsWordWrapBreakword = false; // 強制折り返しを許可しない
+            var textLines = this.FormatText(textSource, 6);
+
+            ValidateTextWithoutRuby(textLines, @"
+Hauhau1
 maumau
+");
+        }
+        [TestMethod]
+        public void Alphabet_WordWrap_NoBreakword_04()
+        {
+            var textSource = this._markupParser.Parse("Hauhauとはmaumau");
+            this._formatter.LineBreakRule.IsWordWrapBreakword = false; // 強制折り返しを許可しない
+            var textLines = this.FormatText(textSource, 6);
+
+            ValidateTextWithoutRuby(textLines, @"
+Hauhau
+とは
+maumau
+");
+        }
+        [TestMethod]
+        public void Alphabet_WordWrap_NoBreakword_05()
+        {
+            var textSource = this._markupParser.Parse("Hauhauとmaumau");
+            this._formatter.LineBreakRule.IsWordWrapBreakword = false; // 強制折り返しを許可しない
+            var textLines = this.FormatText(textSource, 6);
+
+            ValidateTextWithoutRuby(textLines, @"
+Hauhau
+と
+maumau
+");
+        }
+        [TestMethod]
+        public void Alphabet_WordWrap_Breakword_01()
+        {
+            var textSource = this._markupParser.Parse("Hauhaumaumau");
+            this._formatter.LineBreakRule.IsWordWrapBreakword = true;
+            var textLines = this.FormatText(textSource, 6);
+
+            ValidateTextWithoutRuby(textLines, @"
+Hauhau
+maumau
+");
+        }
+        [TestMethod]
+        public void Alphabet_WordWrap_Breakword_02()
+        {
+            var textSource = this._markupParser.Parse("Hauhaumaumau gaogaogaogao");
+            this._formatter.LineBreakRule.IsWordWrapBreakword = true;
+            var textLines = this.FormatText(textSource, 6);
+
+            ValidateTextWithoutRuby(textLines, @"
+Hauhau
+maumau
+gaogao
+gaogao
 ");
         }
 
@@ -81,8 +177,8 @@ maumau
             ValidateTextWithoutRuby(textLines, @"
 Hauhau
 maumau
-hoge
-fuga
+hogefu
+ga
 ");
         }
 
@@ -93,10 +189,10 @@ fuga
             var textLines = this.FormatText(textSource, 6);
 
             ValidateTextWithoutRuby(textLines, @"
-hoge
-Hauhau
-maumau
-fuga
+hogeHa
+uhauma
+umaufu
+ga
 ");
         }
 
@@ -111,6 +207,43 @@ hogehoge
 Hauhau
 maumau
 fuga
+");
+        }
+
+        [TestMethod]
+        public void Alphabet_With_Ruby_04()
+        {
+            var textSource = this._markupParser.Parse("Hauhaumaumau<ruby value=\"moge\">hoge</ruby>fuga");
+            this._formatter.LineBreakRule.IsWordWrapBreakword = false; // 強制折り返しを許可しない
+            var textLines = this.FormatText(textSource, 6);
+
+            ValidateTextWithoutRuby(textLines, @"
+Hauhaumaumau
+hogefuga
+");
+        }
+
+        [TestMethod]
+        public void Alphabet_With_Ruby_05()
+        {
+            var textSource = this._markupParser.Parse("<ruby value=\"moge\">hoge</ruby>Hauhaumaumaufuga");
+            this._formatter.LineBreakRule.IsWordWrapBreakword = false; // 強制折り返し許可を許可しない
+            var textLines = this.FormatText(textSource, 6);
+
+            ValidateTextWithoutRuby(textLines, @"
+hogeHauhaumaumaufuga
+");
+        }
+
+        [TestMethod]
+        public void Alphabet_With_Ruby_06()
+        {
+            var textSource = this._markupParser.Parse("<ruby value=\"moge\">hogehoge</ruby>Hauhaumaumaufuga");
+            this._formatter.LineBreakRule.IsWordWrapBreakword = false; // 強制折り返し許可を許可しない
+            var textLines = this.FormatText(textSource, 6);
+
+            ValidateTextWithoutRuby(textLines, @"
+hogehogeHauhaumaumaufuga
 ");
         }
 
@@ -161,6 +294,46 @@ fuga
 「今日も一
 日がんばる
 ぞい!」
+");
+
+        }
+
+        [TestMethod]
+        public void Insufficient_Width_01()
+        {
+            var textSource = this._markupParser.Parse("今日も一日がんばるぞい!");
+            var textLines = this.FormatText(textSource, 0); // 幅が明らかに1文字にも足りない
+
+            ValidateTextWithoutRuby(textLines, @"
+今
+日
+も
+一
+日
+が
+ん
+ば
+る
+ぞ
+い
+!
+");
+
+        }
+
+        [TestMethod]
+        public void Insufficient_Width_02()
+        {
+            var textSource = this._markupParser.Parse("H<color value=\"blue\">ello!</color>");
+            var textLines = this.FormatText(textSource, 0); // 幅が明らかに1文字にも足りない
+
+            ValidateTextWithoutRuby(textLines, @"
+H
+e
+l
+l
+o
+!
 ");
 
         }

@@ -4,7 +4,6 @@ using System.Linq;
 using System.Text;
 using LetterWriter.Markup;
 using LetterWriter.Unity.Components;
-using UnityEditor;
 using UnityEngine;
 
 namespace LetterWriter.Unity.Markup

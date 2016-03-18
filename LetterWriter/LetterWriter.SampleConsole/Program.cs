@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -33,6 +34,9 @@ namespace LetterWriter.SampleConsole
             //text = "<ruby value=\"B\">A</ruby>》";
             //text = "hogemogeaaabc<ruby aa>hoge</ruby>";
             var textSource = markupParser.Parse(text);
+            textSource = markupParser.Parse(text);
+            textSource = markupParser.Parse(text);
+            textSource = markupParser.Parse(text);
 
             var textSourceBuilder = new TextSourceBuilder();
             textSourceBuilder
@@ -135,18 +139,14 @@ namespace LetterWriter.SampleConsole
 
     class ConsoleMarkupParser : LetterWriterMarkupParser
     {
-        protected override TextRun[] VisitMarkupElement(Element element, string tagNameUpper)
+        protected override IEnumerable<TextRun> VisitMarkupElement(Element element, string tagNameUpper)
         {
             if (tagNameUpper == "COLOR")
             {
-                return
-                    new TextRun[]
-                    {
-                        new ConsoleTextModifier() { Color = (ConsoleColor) Enum.Parse(typeof (ConsoleColor), element.Attributes["Value"], true) }
-                    }
-                    .Concat(base.VisitMarkupElement(element, tagNameUpper))
-                    .Concat(new TextRun[] { new TextEndOfSegment() })
-                    .ToArray();
+                yield return new ConsoleTextModifier() { Color = (ConsoleColor) Enum.Parse(typeof (ConsoleColor), element.Attributes["Value"], true) };
+                foreach (var x in base.VisitMarkupElement(element, tagNameUpper)) yield return x;
+                yield return TextEndOfSegment.Default;
+                yield break;
             }
 
             if (tagNameUpper == "RUBY")
@@ -159,25 +159,21 @@ namespace LetterWriter.SampleConsole
                 //        .Concat(new TextRun[] { new TextEndOfSegment() })
                 //        .ToArray();
                 //}
-                return
-                    new TextRun[] { new ConsoleTextModifier() {  } }
-                        .Concat(base.VisitMarkupElement(element, tagNameUpper))
-                        .Concat(new TextRun[] { new TextEndOfSegment() })
-                        .ToArray();
+                yield return new ConsoleTextModifier() { };
+                foreach (var x in base.VisitMarkupElement(element, tagNameUpper)) yield return x;
+                yield return TextEndOfSegment.Default;
+                yield break;
             }
 
             if (tagNameUpper == "B")
             {
-                return new TextRun[]
-                    {
-                        new ConsoleTextModifier() { IsBold = true }
-                    }
-                    .Concat(base.VisitMarkupElement(element, tagNameUpper))
-                    .Concat(new TextRun[] { new TextEndOfSegment() })
-                    .ToArray();
+                yield return new ConsoleTextModifier() { IsBold = true };
+                foreach (var x in base.VisitMarkupElement(element, tagNameUpper)) yield return x;
+                yield return TextEndOfSegment.Default;
+                yield break;
             }
 
-            return base.VisitMarkupElement(element, tagNameUpper);
+            foreach (var x in base.VisitMarkupElement(element, tagNameUpper)) yield return x;
         }
     }
 
@@ -192,9 +188,21 @@ namespace LetterWriter.SampleConsole
 
     class ConsoleGlyphProvider : GlyphProvider<ConsoleTextModifierScope>
     {
-        protected override IGlyph[] GetGlyphsFromStringCore(ConsoleTextModifierScope textModifierScope, string value)
+        private Dictionary<char, ConsoleGlyph> _cache = new Dictionary<char, ConsoleGlyph>(10 * 1024);
+        protected override void GetGlyphsFromStringCore(ConsoleTextModifierScope textModifierScope, string value, IList<IGlyph> buffer)
         {
-            return value.Select(x => new ConsoleGlyph(x) { Color = textModifierScope.Color ?? ((textModifierScope.IsBold ?? false) ? ConsoleColor.White : ConsoleColor.Gray) }).ToArray();
+            var color = textModifierScope.Color ?? ((textModifierScope.IsBold ?? false) ? ConsoleColor.White : ConsoleColor.Gray);
+            foreach (var x in value)
+            {
+                ConsoleGlyph glyph;
+                if (!this._cache.TryGetValue(x, out glyph) || glyph.Color != color)
+                {
+                    glyph = new ConsoleGlyph(x) { Color = color };
+                    this._cache[x] = glyph;
+                }
+
+                buffer.Add(glyph);
+            }
         }
     }
 

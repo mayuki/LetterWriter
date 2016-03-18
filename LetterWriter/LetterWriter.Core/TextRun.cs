@@ -1,4 +1,6 @@
-﻿namespace LetterWriter
+﻿using System.Collections.Generic;
+
+namespace LetterWriter
 {
     public abstract class TextRun
     {
@@ -16,6 +18,6 @@
 
         public virtual bool CanWrap { get { return true; } }
 
-        public abstract IGlyph[] GetCharacters(GlyphProvider glyphProvider, TextModifierScope textModifierScope);
+        public abstract void GetCharacters(GlyphProvider glyphProvider, TextModifierScope textModifierScope, IList<IGlyph> buffer);
     }
 }

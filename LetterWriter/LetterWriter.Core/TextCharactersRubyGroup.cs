@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 
 namespace LetterWriter
@@ -27,10 +28,10 @@ namespace LetterWriter
             this.RubyPosition = RubyPosition.Before;
         }
 
-        public virtual IGlyph[] GetRubyCharacters(GlyphProvider glyphProvider, TextModifierScope textModifierScope)
+        public virtual void GetRubyCharacters(GlyphProvider glyphProvider, TextModifierScope textModifierScope, IList<IGlyph> buffer)
         {
             var rubyTextModifierScope = textModifierScope as IRubyTextModifierScope;
-            return glyphProvider.GetGlyphsFromString((rubyTextModifierScope != null) ? rubyTextModifierScope.RubyScope : textModifierScope, this.RawRubyCharacters);
+            glyphProvider.GetGlyphsFromString((rubyTextModifierScope != null) ? rubyTextModifierScope.RubyScope : textModifierScope, this.RawRubyCharacters, buffer);
         }
     }
 }

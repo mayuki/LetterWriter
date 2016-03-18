@@ -5,19 +5,21 @@ namespace LetterWriter.Markup
 {
     public class LetterWriterMarkupParser : LetterWriterMarkupParserBase
     {
-        protected override TextRun[] VisitMarkupElement(Element element, string tagNameUpper)
+        protected override IEnumerable<TextRun> VisitMarkupElement(Element element, string tagNameUpper)
         {
             if (tagNameUpper == "RUBY")
             {
-                return new TextRun[] { new TextCharactersRubyGroup(element.TextContent, element.GetAttribute("Value")) };
+                yield return new TextCharactersRubyGroup(element.TextContent, element.GetAttribute("Value"));
+                yield break;
             }
 
             if (tagNameUpper == "BR")
             {
-                return new TextRun[] {new LineBreak()};
+                yield return LineBreak.Default;
+                yield break;
             }
 
-            return base.VisitMarkupElement(element, tagNameUpper);
+            foreach (var x in base.VisitMarkupElement(element, tagNameUpper)) yield return x;
         }
     }
 
@@ -30,46 +32,54 @@ namespace LetterWriter.Markup
 
         protected virtual TextSource ConvertNodeToTextSource(MarkupNode rootNode)
         {
-            return new TextSource(this.VisitMarkupNode(rootNode));
+            return new TextSource(this.VisitMarkupNode(rootNode).ToArray());
         }
 
-        protected virtual TextRun[] VisitMarkupNode(MarkupNode node)
+        protected virtual IEnumerable<TextRun> VisitMarkupNode(MarkupNode node)
         {
             if (node is TextNode)
             {
                 if (this.TreatNewLineAsLineBreak)
                 {
                     var text = ((TextNode)node).TextContent;
-                    var textCharacters = new List<TextRun>();
+                    //var textCharacters = new List<TextRun>();
                     var textSegments = text.Split('\n');
                     for (var i = 0; i < textSegments.Length; i++)
                     {
                         if (i != 0)
                         {
-                            textCharacters.Add(new LineBreak());
+                            yield return LineBreak.Default;
                         }
-                        textCharacters.Add(new TextCharacters(textSegments[i].Trim()));
+                        yield return new TextCharacters(textSegments[i].Trim());
                     }
-                    return textCharacters.ToArray();
+                    yield break;
                 }
                 else
                 {
-                    return new TextRun[] { new TextCharacters(((TextNode)node).TextContent.Replace("\n", "").Replace("\r", "")) };
+                    yield return new TextCharacters(((TextNode)node).TextContent.Replace("\n", "").Replace("\r", ""));
+                    yield break;
                 }
             }
 
             if (node is Element)
             {
                 var element = (Element)node;
-                return this.VisitMarkupElement(element, element.TagName.ToUpper());
+                foreach (var x in this.VisitMarkupElement(element, element.TagName.ToUpper())) yield return x;
+                yield break;
             }
 
-            return node.Children.SelectMany(x => this.VisitMarkupNode(x)).ToArray();
+            for (var i = 0; i < node.Children.Count; i++)
+            {
+                foreach (var x in this.VisitMarkupNode(node.Children[i])) yield return x;
+            }
         }
 
-        protected virtual TextRun[] VisitMarkupElement(Element element, string tagNameUpper)
+        protected virtual IEnumerable<TextRun> VisitMarkupElement(Element element, string tagNameUpper)
         {
-            return element.Children.SelectMany(x => this.VisitMarkupNode(x)).ToArray();
+            for (var i = 0; i < element.Children.Count; i++)
+            {
+                foreach (var x in this.VisitMarkupNode(element.Children[i])) yield return x;
+            }
         }
     }
 }

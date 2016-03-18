@@ -22,33 +22,39 @@ namespace LetterWriter.Unity
             this.UpdateBaseVertices();
         }
 
-        public UIVertex[] BaseVertices
+        public void FillBaseVertices(UIVertex[] targetVertices)
         {
-            get
-            {
-                return (UIVertex[])this._baseVertices.Clone();
-            }
+            targetVertices[0] = this._baseVertices[0];
+            targetVertices[1] = this._baseVertices[1];
+            targetVertices[2] = this._baseVertices[2];
+            targetVertices[3] = this._baseVertices[3];
         }
 
         private void UpdateBaseVertices()
         {
             // MEMO: なぜか高さはuGUIと微妙に違うサイズのが出てくる…。TextGeneratorが誤差であれになってるのではという気もしなくなくもなくもない。
 
+            var characterInfo = this.CharacterInfo;
+            var minX = characterInfo.minX;
+            var minY = characterInfo.minY;
+            var maxX = characterInfo.maxX;
+            var maxY = characterInfo.maxY;
+
             // 左下
-            this._baseVertices[0].uv0 = this.CharacterInfo.uvBottomLeft;
-            this._baseVertices[0].position = new Vector3(this.CharacterInfo.minX, this.CharacterInfo.minY);
+            this._baseVertices[0].uv0 = characterInfo.uvBottomLeft;
+            this._baseVertices[0].position = new Vector3(minX, minY);
 
             // 右下
-            this._baseVertices[1].uv0 = this.CharacterInfo.uvBottomRight;
-            this._baseVertices[1].position = new Vector3(this.CharacterInfo.maxX, this.CharacterInfo.minY);
+            this._baseVertices[1].uv0 = characterInfo.uvBottomRight;
+            this._baseVertices[1].position = new Vector3(maxX, minY);
 
             // 右上
-            this._baseVertices[2].uv0 = this.CharacterInfo.uvTopRight;
-            this._baseVertices[2].position = new Vector3(this.CharacterInfo.maxX, this.CharacterInfo.maxY);
+            this._baseVertices[2].uv0 = characterInfo.uvTopRight;
+            this._baseVertices[2].position = new Vector3(maxX, maxY);
 
             // 左上
-            this._baseVertices[3].uv0 = this.CharacterInfo.uvTopLeft;
-            this._baseVertices[3].position = new Vector3(this.CharacterInfo.minX, this.CharacterInfo.maxY);
+            this._baseVertices[3].uv0 = characterInfo.uvTopLeft;
+            this._baseVertices[3].position = new Vector3(minX, maxY);
 
             if (this.Color.HasValue)
             {

@@ -18,9 +18,12 @@ namespace LetterWriter.Unity.Components
         private TextLine[] _formattedTextLines;
         private TextSource _textSource;
         private string _prevText; // TODO: 変更チェックが雑なのであとで直す
+        private List<TextLine> _textLinesReusableBuffer = new List<TextLine>();
 
         private LetterWriterMarkupParser _markupParser;
         private TextFormatter _cachedTextFormatter;
+
+        private static readonly UIVertex[] _sharedTemporaryUIVertexes = new[] { UIVertex.simpleVert, UIVertex.simpleVert, UIVertex.simpleVert, UIVertex.simpleVert };
 
         private RectTransform _cachedRectTransform;
         public RectTransform CachedRectTransform
@@ -268,6 +271,20 @@ namespace LetterWriter.Unity.Components
         {
             this._formattedTextLines = this.FormatText((this.HorizontalOverflow == HorizontalWrapMode.Wrap) ? this.rectTransform.rect.width : 99999f);
             this._requireReformatText = false;
+
+            // 最大のインデックスを保存する
+            this._maxIndex = 0;
+            for (var i = 0; i < this._formattedTextLines.Length; i++)
+            {
+                var textLine = this._formattedTextLines[i];
+                for (var j = 0; j < textLine.PlacedGlyphs.Length; j++)
+                {
+                    if (this._maxIndex < textLine.PlacedGlyphs[j].Index)
+                    {
+                        this._maxIndex = textLine.PlacedGlyphs[j].Index;
+                    }
+                }
+            }
         }
 
         /// <summary>
@@ -286,20 +303,17 @@ namespace LetterWriter.Unity.Components
                 this._markAsRebuildTextFormatter = false;
             }
 
-            var textLines = new List<TextLine>();
+            this._textLinesReusableBuffer.Clear();
             while (true)
             {
                 var textLine = this._cachedTextFormatter.FormatLine(this._textSource, (int)width, textLineBreakState);
                 if (textLine == null)
                     break;
 
-                textLines.Add(textLine);
+                this._textLinesReusableBuffer.Add(textLine);
             }
 
-            var textLinesArray = textLines.ToArray();
-            this._maxIndex = textLinesArray.SelectMany(x => x.PlacedGlyphs.Select(y => y.Index)).DefaultIfEmpty().Max();
-
-            return textLinesArray;
+            return this._textLinesReusableBuffer.ToArray();
         }
 
         /// <summary>
@@ -398,21 +412,21 @@ namespace LetterWriter.Unity.Components
                         (this._visibleLength == -1 || placedGlyph.Index < this._visibleLength))
                     {
                         var glyph = (UnityGlyph)placedGlyph.Glyph;
-                        var uiVertexes = glyph.BaseVertices;
+                        glyph.FillBaseVertices(_sharedTemporaryUIVertexes);
 
-                        uiVertexes[0].position.x += placedGlyph.X + x;
-                        uiVertexes[0].position.y += -placedGlyph.Y + y - lineHeight;
+                        _sharedTemporaryUIVertexes[0].position.x += placedGlyph.X + x;
+                        _sharedTemporaryUIVertexes[0].position.y += -placedGlyph.Y + y - lineHeight;
 
-                        uiVertexes[1].position.x += placedGlyph.X + x;
-                        uiVertexes[1].position.y += -placedGlyph.Y + y - lineHeight;
+                        _sharedTemporaryUIVertexes[1].position.x += placedGlyph.X + x;
+                        _sharedTemporaryUIVertexes[1].position.y += -placedGlyph.Y + y - lineHeight;
 
-                        uiVertexes[2].position.x += placedGlyph.X + x;
-                        uiVertexes[2].position.y += -placedGlyph.Y + y - lineHeight;
+                        _sharedTemporaryUIVertexes[2].position.x += placedGlyph.X + x;
+                        _sharedTemporaryUIVertexes[2].position.y += -placedGlyph.Y + y - lineHeight;
 
-                        uiVertexes[3].position.x += placedGlyph.X + x;
-                        uiVertexes[3].position.y += -placedGlyph.Y + y - lineHeight;
+                        _sharedTemporaryUIVertexes[3].position.x += placedGlyph.X + x;
+                        _sharedTemporaryUIVertexes[3].position.y += -placedGlyph.Y + y - lineHeight;
 
-                        vertexHelper.AddUIVertexQuad(uiVertexes);
+                        vertexHelper.AddUIVertexQuad(_sharedTemporaryUIVertexes);
                     }
                 }
 
@@ -484,21 +498,21 @@ namespace LetterWriter.Unity.Components
                         (this._visibleLength == -1 || placedGlyph.Index < this._visibleLength))
                     {
                         var glyph = (UnityGlyph)placedGlyph.Glyph;
-                        var uiVertexes = glyph.BaseVertices;
+                        glyph.FillBaseVertices(_sharedTemporaryUIVertexes);
 
-                        uiVertexes[0].position.x += placedGlyph.X + x;
-                        uiVertexes[0].position.y += -placedGlyph.Y + y - lineHeight;
+                        _sharedTemporaryUIVertexes[0].position.x += placedGlyph.X + x;
+                        _sharedTemporaryUIVertexes[0].position.y += -placedGlyph.Y + y - lineHeight;
 
-                        uiVertexes[1].position.x += placedGlyph.X + x;
-                        uiVertexes[1].position.y += -placedGlyph.Y + y - lineHeight;
+                        _sharedTemporaryUIVertexes[1].position.x += placedGlyph.X + x;
+                        _sharedTemporaryUIVertexes[1].position.y += -placedGlyph.Y + y - lineHeight;
 
-                        uiVertexes[2].position.x += placedGlyph.X + x;
-                        uiVertexes[2].position.y += -placedGlyph.Y + y - lineHeight;
+                        _sharedTemporaryUIVertexes[2].position.x += placedGlyph.X + x;
+                        _sharedTemporaryUIVertexes[2].position.y += -placedGlyph.Y + y - lineHeight;
 
-                        uiVertexes[3].position.x += placedGlyph.X + x;
-                        uiVertexes[3].position.y += -placedGlyph.Y + y - lineHeight;
+                        _sharedTemporaryUIVertexes[3].position.x += placedGlyph.X + x;
+                        _sharedTemporaryUIVertexes[3].position.y += -placedGlyph.Y + y - lineHeight;
 
-                        vbo.AddRange(uiVertexes);
+                        vbo.AddRange(_sharedTemporaryUIVertexes);
                     }
                 }
 

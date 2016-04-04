@@ -14,11 +14,13 @@ namespace LetterWriter.Unity
         public CharacterInfo CharacterInfo { get; private set; }
 
         public Color? Color { get; private set; }
+        public UnityTextDecoration TextDecoration { get; private set; }
 
-        public UnityGlyph(char character, CharacterInfo characterInfo, Color? color, int height) : base(character, characterInfo.advance, height)
+        public UnityGlyph(char character, CharacterInfo characterInfo, Color? color, int height, UnityTextDecoration textDecoration) : base(character, characterInfo.advance, height)
         {
             this.CharacterInfo = characterInfo;
             this.Color = color;
+            this.TextDecoration = textDecoration;
             this.UpdateBaseVertices();
         }
 

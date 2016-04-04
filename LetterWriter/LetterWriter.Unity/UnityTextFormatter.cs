@@ -40,7 +40,8 @@ namespace LetterWriter.Unity
                 FontStyle = FontStyle.Normal,
                 Spacing = 0,
                 RubyFontScale = 0.5f,
-                Color = this.Color
+                Color = this.Color,
+                TextDecoration = UnityTextDecoration.None,
             };
         }
     }

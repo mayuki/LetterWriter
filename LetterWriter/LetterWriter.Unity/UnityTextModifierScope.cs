@@ -40,7 +40,21 @@ namespace LetterWriter.Unity
             get { return this.TextModifier.Color ?? ((this.Parent != null) ? this.Parent.Color : null); }
             set { this.TextModifier.Color = value; }
         }
-
+        public UnityTextDecoration? TextDecoration
+        {
+            get
+            {
+                if (this.Parent != null)
+                {
+                    return (this.TextModifier.TextDecoration ?? UnityTextDecoration.None) | this.Parent.TextDecoration;
+                }
+                else
+                {
+                    return this.TextModifier.TextDecoration;
+                }
+            }
+            set { this.TextModifier.TextDecoration = value; }
+        }
         public UnityTextModifierScope(TextModifierScope<UnityTextModifier> parent, UnityTextModifier textModifier) : base(parent, textModifier)
         {
         }
@@ -55,6 +69,7 @@ namespace LetterWriter.Unity
             this.FontSize = textModifier.FontSize;
             this.FontStyle = textModifier.FontStyle;
             this.Color = textModifier.Color;
+            this.TextDecoration = textModifier.TextDecoration;
         }
 
         public TextModifierScope RubyScope

@@ -373,6 +373,13 @@ namespace LetterWriter.Unity.Components
 
             vertexHelper.Clear();
 
+
+            // 打消し線の元ネタを用意する
+            var lineGlyphs = new List<IGlyph>();
+            this._cachedTextFormatter.GlyphProvider.GetGlyphsFromString(new UnityTextModifierScope(null, new UnityTextModifier() { FontSize = this.FontSize }), "―", lineGlyphs);
+            var lineGlyph = (UnityGlyph)lineGlyphs[0];
+            var lineVertices = new[] { UIVertex.simpleVert, UIVertex.simpleVert, UIVertex.simpleVert, UIVertex.simpleVert };
+
             foreach (var textLine in this._formattedTextLines)
             {
                 var lineHeight = (this.FontSize + (leadingBase * this.FontSize));
@@ -427,6 +434,63 @@ namespace LetterWriter.Unity.Components
                         _sharedTemporaryUIVertexes[3].position.y += -placedGlyph.Y + y - lineHeight;
 
                         vertexHelper.AddUIVertexQuad(_sharedTemporaryUIVertexes);
+
+                        // 打消し線や下線を引く
+                        // TODO: よい実装ではないので改善したい。―を並べることによる線なのでフォントによっては隙間ができてしまう。
+                        // 打消し線
+                        if (((glyph.TextDecoration & UnityTextDecoration.LineThrough) == UnityTextDecoration.LineThrough))
+                        {
+                            lineGlyph.FillBaseVertices(lineVertices);
+
+                            lineVertices[0].position.x += placedGlyph.X + x;
+                            lineVertices[0].position.y += -placedGlyph.Y + y - lineHeight;
+
+                            lineVertices[1].position.x += placedGlyph.X + x;
+                            lineVertices[1].position.y += -placedGlyph.Y + y - lineHeight;
+
+                            lineVertices[2].position.x += placedGlyph.X + x;
+                            lineVertices[2].position.y += -placedGlyph.Y + y - lineHeight;
+
+                            lineVertices[3].position.x += placedGlyph.X + x;
+                            lineVertices[3].position.y += -placedGlyph.Y + y - lineHeight;
+
+                            lineVertices[0].color = _sharedTemporaryUIVertexes[0].color;
+                            lineVertices[1].color = _sharedTemporaryUIVertexes[1].color;
+                            lineVertices[2].color = _sharedTemporaryUIVertexes[2].color;
+                            lineVertices[3].color = _sharedTemporaryUIVertexes[3].color;
+
+                            vertexHelper.AddUIVertexQuad(lineVertices);
+                        }
+
+                        // 下線
+                        if (((glyph.TextDecoration & UnityTextDecoration.Underline) == UnityTextDecoration.Underline))
+                        {
+                            lineGlyph.FillBaseVertices(lineVertices);
+
+                            lineVertices[0].position.y += -lineHeight / 2;
+                            lineVertices[1].position.y += -lineHeight / 2;
+                            lineVertices[2].position.y += -lineHeight / 2;
+                            lineVertices[3].position.y += -lineHeight / 2;
+
+                            lineVertices[0].position.x += placedGlyph.X + x;
+                            lineVertices[0].position.y += -placedGlyph.Y + y - lineHeight;
+
+                            lineVertices[1].position.x += placedGlyph.X + x;
+                            lineVertices[1].position.y += -placedGlyph.Y + y - lineHeight;
+
+                            lineVertices[2].position.x += placedGlyph.X + x;
+                            lineVertices[2].position.y += -placedGlyph.Y + y - lineHeight;
+
+                            lineVertices[3].position.x += placedGlyph.X + x;
+                            lineVertices[3].position.y += -placedGlyph.Y + y - lineHeight;
+
+                            lineVertices[0].color = _sharedTemporaryUIVertexes[0].color;
+                            lineVertices[1].color = _sharedTemporaryUIVertexes[1].color;
+                            lineVertices[2].color = _sharedTemporaryUIVertexes[2].color;
+                            lineVertices[3].color = _sharedTemporaryUIVertexes[3].color;
+
+                            vertexHelper.AddUIVertexQuad(lineVertices);
+                        }
                     }
                 }
 

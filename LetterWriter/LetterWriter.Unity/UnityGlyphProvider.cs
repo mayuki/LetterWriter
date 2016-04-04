@@ -25,6 +25,7 @@ namespace LetterWriter.Unity
             var fontSize = textModifierScope.FontSize ?? 24;
             var fontStyle = textModifierScope.FontStyle ?? FontStyle.Normal;
             var color = textModifierScope.Color;
+            var textDecoration = textModifierScope.TextDecoration ?? UnityTextDecoration.None;
 
             if (!this._cachedTextGenerator.Populate(value + "…M", new TextGenerationSettings() { font = this.Font, fontSize = fontSize, fontStyle = fontStyle }))
             {
@@ -50,7 +51,8 @@ namespace LetterWriter.Unity
                     if ((glyph.Color.HasValue != color.HasValue) ||
                         (glyph.Color.HasValue && color.HasValue && ((Vector4)color.Value != (Vector4)color.Value)) ||
                         glyph.Height != fontSize ||
-                        glyph.AdvanceWidth != characterInfo.advance)
+                        glyph.AdvanceWidth != characterInfo.advance ||
+                        glyph.TextDecoration != textDecoration)
                     {
                         glyph = null;
                     }
@@ -58,7 +60,7 @@ namespace LetterWriter.Unity
 
                 if (glyph == null)
                 {
-                    glyph = new UnityGlyph(c, characterInfo, color, fontSize);
+                    glyph = new UnityGlyph(c, characterInfo, color, fontSize, textDecoration);
                     this._recentGlyphCache[c] = glyph;
                 }
 

@@ -16,5 +16,6 @@ namespace LetterWriter.Unity
         public FontStyle? FontStyle { get; set; }
 
         public Color? Color { get; set; }
+        public UnityTextDecoration? TextDecoration { get; set; }
     }
 }

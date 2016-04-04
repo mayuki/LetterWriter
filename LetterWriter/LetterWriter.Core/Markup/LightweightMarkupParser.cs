@@ -118,6 +118,12 @@ namespace LetterWriter.Markup
                         isCloseTag = false;
                         sb.Length = 0;
 
+                        // <color=value> の場合には一文字戻す
+                        if (c == '=')
+                        {
+                            pos--;
+                        }
+
                         continue;
                     }
                     // 属性も内容もなくタグ終了
@@ -185,9 +191,8 @@ namespace LetterWriter.Markup
                     // デフォルト引数的な
                     else if (c == '=')
                     {
-                        state = ParseState.TagAttributeValue;
+                        state = ParseState.TagAttributeNameCompleted;
                         sb.Append("value"); // 引数はvalueってことにする
-                        attrValueStart = ' ';
                         continue;
                     }
                     // 内容空要素
@@ -212,8 +217,6 @@ namespace LetterWriter.Markup
                     // 属性の値開始
                     if ((Char.IsControl(c) || Char.IsWhiteSpace(c)) || c == '=')
                     {
-                        attrName = sb.ToString();
-                        sb.Length = 0;
                         state = ParseState.TagAttributeNameCompleted;
                         continue;
                     }
@@ -225,6 +228,9 @@ namespace LetterWriter.Markup
                 // 属性名から値まで
                 else if (state == ParseState.TagAttributeNameCompleted)
                 {
+                    attrName = sb.ToString();
+                    sb.Length = 0;
+
                     // 属性
                     if ((Char.IsControl(c) || Char.IsWhiteSpace(c)))
                     {
@@ -241,7 +247,7 @@ namespace LetterWriter.Markup
                     else
                     {
                         state = ParseState.TagAttributeValue;
-                        attrValueStart = c;
+                        attrValueStart = ' ';
                         pos--;
                         continue;
                     }
@@ -252,11 +258,15 @@ namespace LetterWriter.Markup
                     // 属性の値の終わり
                     if ((attrValueStart == '"' && c == '"') ||
                         (attrValueStart == '\'' && c == '\'') ||
-                        (attrValueStart == ' ' && (Char.IsControl(c) || Char.IsWhiteSpace(c))))
+                        (attrValueStart == ' ' && (c == '>' || Char.IsControl(c) || Char.IsWhiteSpace(c))))
                     {
                         currentNode.Attributes[attrName] = sb.ToString();
                         sb.Length = 0;
                         state = ParseState.TagAttributes;
+                        if (c == '>')
+                        {
+                            pos--;
+                        }
                         continue;
                     }
                     // & で始まる

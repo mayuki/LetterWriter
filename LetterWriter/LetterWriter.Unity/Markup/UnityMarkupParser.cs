@@ -25,9 +25,58 @@ namespace LetterWriter.Unity.Markup
             {"clear", new Color(0.0f, 0.0f, 0.0f, 0.0f)},
         };
 
+        private bool TryConvertToColor(string value, out Color result)
+        {
+            if (value.StartsWith("#") && value.Length == 4 || value.Length == 9 || value.Length == 7)
+            {
+                // Web-color code (#rrggbb, #rgb, #rrggbbaa)
+
+                if (value.Length == 4)
+                {
+                    // #abc style -> #aabbcc
+                    value = String.Format("#{0}{0}{1}{1}{2}{2}", value.Substring(1, 1), value.Substring(2, 1),
+                        value.Substring(3, 1));
+                }
+
+                if (value.Length == 9)
+                {
+                    // #rrggbbaa
+                    var color = UInt32.Parse(value.Substring(1), System.Globalization.NumberStyles.HexNumber);
+                    var r = (((color >> 24) & 0xff)/255.0f);
+                    var g = (((color >> 16) & 0xff)/255.0f);
+                    var b = (((color >> 8) & 0xff)/255.0f);
+                    var a = (((color >> 0) & 0xff)/255.0f);
+
+                    result = new Color(r, g, b, a);
+                    return true;
+                }
+                else
+                {
+                    // #rrggbb
+                    var color = UInt32.Parse(value.Substring(1), System.Globalization.NumberStyles.HexNumber);
+                    var r = (((color >> 16) & 0xff)/255.0f);
+                    var g = (((color >> 8) & 0xff)/255.0f);
+                    var b = (((color >> 0) & 0xff)/255.0f);
+
+                    result =  new Color(r, g, b);
+                    return true;
+                }
+            }
+            else if (this._colorTable.ContainsKey(value))
+            {
+                result = this._colorTable[value];
+                return true;
+            }
+
+            result = Color.clear;
+
+            return false;
+        }
 
         protected override IEnumerable<TextRun> VisitMarkupElement(Element element, string tagNameUpper)
         {
+            Color c;
+
             switch (tagNameUpper)
             {
                 case "RUBY":
@@ -36,7 +85,10 @@ namespace LetterWriter.Unity.Markup
 
                     if (element.Attributes.ContainsKey("color"))
                     {
-                        color = this._colorTable[element.Attributes["Color"]];
+                        if (this.TryConvertToColor(element.Attributes["Color"], out c))
+                        {
+                            color = c;
+                        }
                     }
                     if (element.Attributes.ContainsKey("scale"))
                     {
@@ -54,15 +106,15 @@ namespace LetterWriter.Unity.Markup
 
                 case "COLOR":
                     var value = element.GetAttribute("Value");
-                    if (!_colorTable.ContainsKey(value))
+                    if (this.TryConvertToColor(value, out c))
                     {
+                        yield return new UnityTextModifier() { Color = c };
                         foreach (var x in base.VisitMarkupElement(element, tagNameUpper)) yield return x;
+                        yield return TextEndOfSegment.Default;
                     }
                     else
                     {
-                        yield return new UnityTextModifier() { Color = this._colorTable[value] };
                         foreach (var x in base.VisitMarkupElement(element, tagNameUpper)) yield return x;
-                        yield return TextEndOfSegment.Default;
                     }
                     break;
 

@@ -576,7 +576,7 @@ namespace LetterWriter.Unity.Components
             var firstLine = formattedLines.FirstOrDefault();
             if (firstLine == null) return 0;
 
-            return firstLine.PlacedGlyphs.DefaultIfEmpty().Max(x => x.X + x.Glyph.AdvanceWidth);
+            return firstLine.PlacedGlyphs.Select(x => x.X + x.Glyph.AdvanceWidth).DefaultIfEmpty().Max();
         }
 
         /// <summary>
@@ -603,14 +603,14 @@ namespace LetterWriter.Unity.Components
                 // 上に突き抜けてる分を計算してあげないと…
                 if (!this.IsLineHeightFixed && textLine.PlacedGlyphs.Any(p => p.Y < 0))
                 {
-                    lineHeight += textLine.PlacedGlyphs.Where(p => p.Y < 0).DefaultIfEmpty().Max(p => p.Glyph.Height);
+                    lineHeight += textLine.PlacedGlyphs.Where(p => p.Y < 0).Select(x => x.Glyph.Height).DefaultIfEmpty().Max();
                 }
 
                 height += lineHeight * this.LineHeight;
 
                 // 表示している文字数が高さに影響するのであればそれに応じる
                 if (this.IsHeightDepenedingOnVisibleLength &&
-                    (this.VisibleLength != -1 && this.VisibleLength <= textLine.PlacedGlyphs.DefaultIfEmpty().Max(x => x.Index)))
+                    (this.VisibleLength != -1 && this.VisibleLength <= textLine.PlacedGlyphs.Select(x => x.Index).DefaultIfEmpty().Max()))
                 {
                     break;
                 }
